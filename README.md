@@ -4,13 +4,15 @@
 
 ## Возможности
 
-- ✅ **Мониторинг приложений** — проверка доступности по Bundle ID через iTunes Lookup API
-- ✅ **Фоновый мониторинг** — автоматическая проверка каждые 10 минут
+- ✅ **Мониторинг приложений** — проверка доступности по Bundle ID или Apple ID
+- ✅ **Фоновый мониторинг** — автоматическая проверка каждые 30 минут (с джиттером)
 - ✅ **Публичный дашборд** — реальное время с автообновлением каждые 60 секунд
 - ✅ **Google Sheets** — логирование изменений статуса в таблицу
 - ✅ **API Key аутентификация** — защита API endpoints
 - ✅ **Rate Limiting** — 100 запросов/час на ключ
 - ✅ **История проверок** — хранение последних 100 проверок на приложение
+- ✅ **Уведомления** — Email и Telegram при изменениях
+- ✅ **PostgreSQL/SQLite** — поддержка обеих баз данных
 
 ## Быстрый старт
 
@@ -20,23 +22,59 @@
 pip install -r requirements.txt
 ```
 
-### 2. Настройка
+### 2. Настройка базы данных
 
-Скопируйте `.env.example` в `.env` и настройте:
+#### Вариант A: PostgreSQL (рекомендуется для продакшена)
+
+1. Установите PostgreSQL (если не установлен):
+   ```bash
+   # macOS
+   brew install postgresql
+   
+   # Ubuntu/Debian
+   sudo apt-get install postgresql postgresql-contrib
+   ```
+
+2. Создайте базу данных и пользователя:
+   ```bash
+   sudo -u postgres psql
+   
+   CREATE DATABASE app_store_monitor;
+   CREATE USER monitor_user WITH PASSWORD 'your_password';
+   GRANT ALL PRIVILEGES ON DATABASE app_store_monitor TO monitor_user;
+   \q
+   ```
+
+3. Настройте `.env`:
+   ```env
+   DATABASE_URL=postgresql://monitor_user:your_password@localhost:5432/app_store_monitor
+   ```
+
+#### Вариант B: SQLite (для разработки/тестирования)
+
+```env
+DATABASE_URL=sqlite:///./app_store_monitor.db
+```
+
+### 3. Настройка остальных параметров
+
+Скопируйте `.env.example` в `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-**Обязательные параметры:**
-- `DATABASE_URL` — по умолчанию `sqlite:///./app_store_monitor.db`
+**Минимальная конфигурация:**
+```env
+# База данных
+DATABASE_URL=postgresql://user:password@localhost:5432/app_store_monitor
 
-**Опциональные параметры (Google Sheets):**
-- `GOOGLE_CREDENTIALS` — JSON сервисного аккаунта Google
-- `SPREADSHEET_ID` — ID таблицы Google Sheets
-- `SHEET_NAME` — имя листа (по умолчанию `AppStoreMonitor`)
+# Администратор
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=changeme
+```
 
-### 3. Запуск
+### 4. Запуск
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -44,6 +82,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 Откройте:
 - **Дашборд**: http://localhost:8000/dashboard
+- **Настройки**: http://localhost:8000/settings (логин/пароль из `.env`)
 - **API Docs**: http://localhost:8000/docs
 - **Health**: http://localhost:8000/health
 

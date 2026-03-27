@@ -3,9 +3,18 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
 
+# Определение типа базы данных
+is_sqlite = settings.database_url.startswith("sqlite")
+
+# Настройки движка
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+    connect_args={"check_same_thread": False} if is_sqlite else {
+        "pool_size": 10,
+        "pool_recycle": 3600,
+        "pool_pre_ping": True
+    },
+    echo=False  # Включить для отладки SQL запросов
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -20,3 +29,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def init_db():
+    """Инициализация базы данных (создание таблиц)"""
+    Base.metadata.create_all(bind=engine)
