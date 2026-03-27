@@ -121,13 +121,14 @@ class MonitorService:
         finally:
             db.close()
     
-    async def _check_app(self, db: Session, app: App):
+    async def _check_app(self, db: Session, app: App, is_new_app: bool = False):
         """
         Проверка одного приложения
 
         Args:
             db: Сессия БД
             app: Модель приложения
+            is_new_app: флаг нового приложения
         """
         try:
             # Запрос к Apple API по bundle_id или app_id
@@ -187,7 +188,7 @@ class MonitorService:
             logger.info(f"Проверено {app.bundle_id or app.app_id}: {result['status']}")
             
             # Проверка на изменения и создание алертов (после коммита чтобы app имел обновлённые данные)
-            alerts = check_and_create_alerts(db, app, result)
+            alerts = check_and_create_alerts(db, app, result, is_new_app=is_new_app)
             db.commit()  # Коммит алертов
             
             # Отправка уведомлений для каждого алерта
@@ -222,13 +223,14 @@ class MonitorService:
             db.add(history)
             db.commit()
     
-    async def check_single_app(self, app_id: int) -> dict:
+    async def check_single_app(self, app_id: int, is_new_app: bool = False) -> dict:
         """
         Принудительная проверка одного приложения
-        
+
         Args:
             app_id: ID приложения
-            
+            is_new_app: флаг нового приложения (для уведомлений)
+
         Returns:
             dict с результатом проверки
         """
@@ -237,9 +239,9 @@ class MonitorService:
             app = db.query(App).filter(App.id == app_id).first()
             if not app:
                 return {"error": "Приложение не найдено"}
-            
-            await self._check_app(db, app)
-            
+
+            await self._check_app(db, app, is_new_app=is_new_app)
+
             return {
                 "status": app.last_status,
                 "name": app.name,
@@ -247,7 +249,7 @@ class MonitorService:
                 "last_check_at": app.last_check_at,
                 "last_error": app.last_error
             }
-            
+
         except Exception as e:
             logger.error(f"Ошибка принудительной проверки: {e}")
             return {"error": str(e)}

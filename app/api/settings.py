@@ -122,10 +122,10 @@ async def add_app(
     app_id = db_app.id
     db.refresh(db_app)
     
-    # Немедленная проверка приложения (вне сессии)
+    # Немедленная проверка приложения с флагом нового приложения
     from app.services.monitor import monitor_service
     try:
-        await monitor_service.check_single_app(app_id)
+        await monitor_service.check_single_app(app_id, is_new_app=True)
     except Exception as e:
         logger.warning(f"Ошибка при проверке нового приложения: {e}")
     

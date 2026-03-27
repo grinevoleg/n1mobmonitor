@@ -79,7 +79,14 @@ async def send_email_alert(
             return False
         
         # Формирование темы и тела письма
-        emoji = {"status_change": "🔴", "version_change": "🔵", "error": "🟡"}.get(alert_type, "⚪")
+        emoji = {
+            "status_change": "🔴", 
+            "version_change": "🔵", 
+            "error": "🟡",
+            "app_added": "🆕",
+            "unavailable": "🔴",
+            "test": "⚪"
+        }.get(alert_type, "⚪")
         subject = f"{emoji} App Store Monitor: {alert_type} - {app_name}"
         
         body = f"""
@@ -158,7 +165,14 @@ async def send_telegram_alert(
             return False
         
         # Формирование сообщения
-        emoji = {"status_change": "🔴", "version_change": "🔵", "error": "🟡"}.get(alert_type, "⚪")
+        emoji = {
+            "status_change": "🔴", 
+            "version_change": "🔵", 
+            "error": "🟡",
+            "app_added": "🆕",
+            "unavailable": "🔴",
+            "test": "⚪"
+        }.get(alert_type, "⚪")
         
         message = f"""
 {emoji} *App Store Monitor*
@@ -205,6 +219,20 @@ async def send_alert(
     Returns:
         (email_sent, telegram_sent)
     """
+    # Формирование заголовка в зависимости от типа
+    type_titles = {
+        "status_change": "Изменение статуса",
+        "version_change": "Обновление версии",
+        "name_change": "Изменение названия",
+        "error": "Ошибка проверки",
+        "unavailable": "Приложение недоступно",
+        "app_added": "Новое приложение",
+        "test": "Тестовое уведомление"
+    }
+    
+    title = type_titles.get(alert_type, alert_type)
+    full_message = f"{title}: {old_value or ''} → {new_value or ''}" if old_value else f"{title}"
+    
     email_sent = await send_email_alert(alert_type, app_name, app_identifier, old_value, new_value)
     telegram_sent = await send_telegram_alert(alert_type, app_name, app_identifier, old_value, new_value)
     

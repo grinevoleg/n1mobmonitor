@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 def check_and_create_alerts(
     db: Session,
     app: App,
-    result: Dict[str, Any]
+    result: Dict[str, Any],
+    is_new_app: bool = False
 ) -> List[Alert]:
     """
     Проверка изменений и создание алертов
@@ -21,6 +22,7 @@ def check_and_create_alerts(
         db: сессия БД
         app: модель приложения
         result: результат проверки из App Store API
+        is_new_app: флаг нового приложения
         
     Returns:
         список созданных алертов
@@ -37,8 +39,23 @@ def check_and_create_alerts(
     app_identifier = app.bundle_id or app.app_id or str(app.id)
     app_name = app.name or app_identifier
     
-    # 1. Alert на изменение статуса
-    if old_status != new_status and new_status is not None:
+    # 0. Alert о добавлении нового приложения
+    if is_new_app and new_status is not None:
+        status_emoji = {"available": "🟢", "unavailable": "🔴", "error": "🟡"}.get(new_status, "⚪")
+        alert = Alert(
+            app_id=app.id,
+            alert_type="app_added",
+            old_value=None,
+            new_value=json.dumps({"status": new_status, "name": new_name, "version": new_version}),
+            message=f"Приложение добавлено в мониторинг. Статус: {status_emoji} {new_status}",
+            created_at=datetime.utcnow()
+        )
+        db.add(alert)
+        alerts.append(alert)
+        logger.info(f"Создан алерт app_added для {app_name}")
+    
+    # 1. Alert на изменение статуса (не показываем для новых приложений)
+    if old_status != new_status and new_status is not None and not is_new_app:
         alert = Alert(
             app_id=app.id,
             alert_type="status_change",
@@ -119,6 +136,7 @@ def get_alert_emoji(alert_type: str) -> str:
         "name_change": "🟣",
         "error": "🟡",
         "unavailable": "🔴",
+        "app_added": "🆕",
         "test": "⚪"
     }
     return emoji_map.get(alert_type, "⚪")
