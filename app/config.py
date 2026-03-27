@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # Telegram bot token
     telegram_bot_token: Optional[str] = None
     
+    # Enable Telegram bot (for production only)
+    telegram_bot_enabled: bool = False
+    
     # App name
     app_name: str = "App Store Monitor"
     

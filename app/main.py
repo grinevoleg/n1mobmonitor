@@ -76,19 +76,20 @@ async def lifespan(app: FastAPI):
     # Запуск фонового мониторинга
     monitor_service.start()
     
-    # Запуск Telegram бота (ОТКЛЮЧЕН ВРЕМЕННО - требует доработки)
-    # import threading
-    # from app.config import settings
-    # 
-    # telegram_token = settings.__dict__.get("telegram_bot_token")
-    # if telegram_token:
-    #     bot_thread = threading.Thread(
-    #         target=telegram_bot_service.start,
-    #         args=(telegram_token,),
-    #         daemon=True
-    #     )
-    #     bot_thread.start()
-    #     logger.info("Telegram bot thread started")
+    # Запуск Telegram бота (только если включено в .env)
+    import threading
+    from app.config import settings
+    
+    if settings.telegram_bot_enabled and settings.telegram_bot_token:
+        bot_thread = threading.Thread(
+            target=telegram_bot_service.start,
+            args=(settings.telegram_bot_token,),
+            daemon=True
+        )
+        bot_thread.start()
+        logger.info("Telegram bot thread started")
+    else:
+        logger.info("Telegram bot disabled (set TELEGRAM_BOT_ENABLED=true to enable)")
 
     yield
 
