@@ -45,17 +45,42 @@ class TelegramBotService:
         self.application.add_handler(CommandHandler("setrole", self.cmd_setrole))
         self.application.add_handler(CommandHandler("stats", self.cmd_stats))
         
-        # Запуск polling
-        self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+        # Запуск polling с созданием event loop
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         self._running = True
-        logger.info("Telegram bot started")
+        logger.info("Telegram bot starting polling...")
+        
+        try:
+            loop.run_until_complete(self._run_polling())
+        except Exception as e:
+            logger.error(f"Bot polling error: {e}")
+        finally:
+            self._running = False
+    
+    async def _run_polling(self):
+        """Асинхронный запуск polling"""
+        await self.application.initialize()
+        await self.application.start()
+        await self.application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        logger.info("Telegram bot started successfully")
+        
+        # Держим бота запущенным
+        while self._running:
+            await asyncio.sleep(1)
+        
+        # Остановка
+        await self.application.updater.stop()
+        await self.application.stop()
+        await self.application.shutdown()
+        logger.info("Telegram bot stopped")
     
     def stop(self):
         """Остановка бота"""
-        if self.application and self._running:
-            self.application.stop()
-            self._running = False
-            logger.info("Telegram bot stopped")
+        self._running = False
+        logger.info("Telegram bot stopping...")
     
     def _get_db(self) -> Session:
         """Получение сессии БД"""

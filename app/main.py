@@ -76,19 +76,17 @@ async def lifespan(app: FastAPI):
     # Запуск фонового мониторинга
     monitor_service.start()
     
-    # Запуск Telegram бота (в отдельном потоке с event loop)
+    # Запуск Telegram бота (в отдельном потоке)
     import threading
     from app.config import settings
     
     telegram_token = settings.__dict__.get("telegram_bot_token")
     if telegram_token:
-        def run_bot():
-            import asyncio
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            telegram_bot_service.start(telegram_token)
-        
-        bot_thread = threading.Thread(target=run_bot, daemon=True)
+        bot_thread = threading.Thread(
+            target=telegram_bot_service.start,
+            args=(telegram_token,),
+            daemon=True
+        )
         bot_thread.start()
         logger.info("Telegram bot thread started")
 

@@ -6,7 +6,8 @@
       "Bash(git push *)",
       "Bash(echo *)",
       "Bash(python3 *)",
-      "Bash(uvicorn *)"
+      "Bash(uvicorn *)",
+      "Bash(nohup *)"
     ]
   },
   "$version": 3
