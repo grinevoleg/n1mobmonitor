@@ -5,7 +5,7 @@ from typing import List
 from app.database import get_db
 from app.models import TelegramUser, UserNotificationSettings, UserRole, UserStatus
 from app.schemas import TelegramUserResponse, TelegramUserUpdate, UserNotificationSettingsResponse, UserNotificationSettingsUpdate
-from app.api.deps import get_api_key
+from app.api.deps import get_api_key, get_admin_user
 
 router = APIRouter(prefix="/api/v1/telegram-users", tags=["Telegram Users"])
 
@@ -22,7 +22,7 @@ def list_users(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Получить список всех пользователей Telegram (admin only)"""
     users = db.query(TelegramUser).order_by(TelegramUser.created_at.desc()).offset(skip).limit(limit).all()
@@ -33,7 +33,7 @@ def list_users(
 def get_my_profile(
     telegram_id: str,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Получить мой профиль"""
     user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
@@ -47,7 +47,7 @@ def update_user_role(
     user_id: int,
     update_data: TelegramUserUpdate,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Изменить роль пользователя (admin only)"""
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
@@ -71,7 +71,7 @@ def approve_user(
     user_id: int,
     approver_telegram_id: str,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Одобрить пользователя (admin only)"""
     approver = db.query(TelegramUser).filter(TelegramUser.telegram_id == approver_telegram_id).first()
@@ -95,7 +95,7 @@ def approve_user(
 def reject_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Отклонить пользователя (admin only)"""
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
@@ -114,7 +114,7 @@ def reject_user(
 def get_notification_settings(
     user_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Получить настройки уведомлений пользователя"""
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
@@ -138,7 +138,7 @@ def update_notification_settings(
     user_id: int,
     settings_data: UserNotificationSettingsUpdate,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Обновить настройки уведомлений пользователя"""
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
