@@ -87,10 +87,26 @@
         </div>
     </div>
 
+    <!-- Модальное окно авторизации -->
+    <div class="modal-overlay" id="auth-modal">
+        <div class="modal">
+            <h3 class="modal-title">🔐 Авторизация</h3>
+            <p class="modal-message">Введите данные администратора для доступа к настройкам</p>
+            <form id="auth-form" onsubmit="handleAuth(event)">
+                <input type="text" class="modal-input" id="auth-username" placeholder="Логин" value="admin" required>
+                <input type="password" class="modal-input" id="auth-password" placeholder="Пароль" required>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Войти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <h1>⚙️ Настройки</h1>
             <p class="subtitle">App Store Monitor - Управление настройками</p>
+            <button class="btn btn-secondary" onclick="logout()" style="margin-top: 15px; font-size: 0.85rem;">🚪 Выйти</button>
         </header>
         <nav class="nav">
             <a href="/dashboard">📊 Дашборд</a>
@@ -257,23 +273,34 @@
             return auth ? `Basic ${auth}` : null;
         }
 
+        function showAuthModal() {
+            document.getElementById('auth-modal').classList.add('active');
+            document.getElementById('auth-password').value = '';
+            document.getElementById('auth-username').focus();
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.remove('active');
+        }
+
+        function handleAuth(event) {
+            event.preventDefault();
+            const username = document.getElementById('auth-username').value;
+            const password = document.getElementById('auth-password').value;
+            
+            if (username && password) {
+                localStorage.setItem('adminAuth', btoa(`${username}:${password}`));
+                closeAuthModal();
+                loadSettings();
+            }
+        }
+
         function checkAuth() {
             if (!getAuthHeader()) {
-                showAuthPrompt();
+                showAuthModal();
                 return false;
             }
             return true;
-        }
-
-        function showAuthPrompt() {
-            showModal('Требуется авторизация', 'Введите логин и пароль администратора для доступа к настройкам.', () => {
-                const login = prompt('Логин:', 'admin');
-                const password = prompt('Пароль:', '');
-                if (login && password) {
-                    localStorage.setItem('adminAuth', btoa(`${login}:${password}`));
-                    loadSettings();
-                }
-            });
         }
 
         async function loadSettings() {
@@ -282,7 +309,8 @@
                 const response = await fetch('/api/v1/settings', { headers: { 'Authorization': getAuthHeader() } });
                 if (response.status === 401) {
                     localStorage.removeItem('adminAuth');
-                    showAuthPrompt();
+                    showToast('Ошибка авторизации', 'Неверный логин или пароль', 'error');
+                    showAuthModal();
                     return;
                 }
                 settings = await response.json();
@@ -528,6 +556,13 @@
 
         // Инициализация
         loadSettings();
+
+        // Выход
+        function logout() {
+            localStorage.removeItem('adminAuth');
+            showToast('Выход', 'Вы вышли из системы', 'info');
+            setTimeout(() => location.reload(), 1000);
+        }
     </script>
 </body>
 </html>
