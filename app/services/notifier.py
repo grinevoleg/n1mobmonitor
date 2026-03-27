@@ -174,16 +174,63 @@ async def send_telegram_alert(
             "test": "⚪"
         }.get(alert_type, "⚪")
         
-        message = f"""
-{emoji} *App Store Monitor*
-
-*Тип события:* `{alert_type}`
-*Приложение:* {app_name}
-*Идентификатор:* `{app_identifier}`
-
-*Старое значение:* `{old_value or 'N/A'}`
-*Новое значение:* `{new_value or 'N/A'}`
-"""
+        # Парсинг значений для детальной информации
+        old_data = json.loads(old_value) if old_value else {}
+        new_data = json.loads(new_value) if new_value else {}
+        
+        # Формирование детального сообщения
+        message = f"{emoji} *App Store Monitor*\n\n"
+        
+        if alert_type == "app_added":
+            message += f"*🆕 Новое приложение в мониторинге*\n\n"
+            message += f"*Название:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if new_data.get('name'):
+                message += f"*Полное имя:* `{new_data['name']}`\n"
+            if new_data.get('version'):
+                message += f"*Версия:* `{new_data['version']}`\n"
+            if new_data.get('status'):
+                status_text = {"available": "✅ Доступно", "unavailable": "❌ Недоступно", "error": "⚠️ Ошибка"}.get(new_data['status'], new_data['status'])
+                message += f"*Статус:* {status_text}\n"
+                
+        elif alert_type == "version_change":
+            message += f"*🔵 Обновление версии*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if old_data.get('version'):
+                message += f"*Старая версия:* `{old_data['version']}`\n"
+            if new_data.get('version'):
+                message += f"*Новая версия:* `{new_data['version']}`\n"
+                
+        elif alert_type == "status_change":
+            message += f"*🔴 Изменение статуса*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if old_data.get('status'):
+                message += f"*Старый статус:* `{old_data['status']}`\n"
+            if new_data.get('status'):
+                status_text = {"available": "✅ Доступно", "unavailable": "❌ Недоступно", "error": "⚠️ Ошибка"}.get(new_data['status'], new_data['status'])
+                message += f"*Новый статус:* {status_text}\n"
+                
+        elif alert_type == "error":
+            message += f"*🟡 Ошибка проверки*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if new_data.get('error'):
+                message += f"*Ошибка:* `{new_data['error']}`\n"
+                
+        elif alert_type == "unavailable":
+            message += f"*🔴 Приложение недоступно*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            message += f"*Статус:* ❌ Не найдено в App Store\n"
+            
+        elif alert_type == "test":
+            message += f"*⚪ Тестовое уведомление*\n\n"
+            message += f"Это тестовое сообщение от App Store Monitor.\n"
+            message += f"Если вы видите это сообщение — уведомления работают!\n"
+        
+        message += f"\n_App Store Monitor_"
         
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         payload = {

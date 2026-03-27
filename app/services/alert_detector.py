@@ -46,7 +46,13 @@ def check_and_create_alerts(
             app_id=app.id,
             alert_type="app_added",
             old_value=None,
-            new_value=json.dumps({"status": new_status, "name": new_name, "version": new_version}),
+            new_value=json.dumps({
+                "status": new_status,
+                "name": new_name,
+                "version": new_version,
+                "bundle_id": app.bundle_id,
+                "app_id": app.app_id
+            }),
             message=f"Приложение добавлено в мониторинг. Статус: {status_emoji} {new_status}",
             created_at=datetime.utcnow()
         )
@@ -60,7 +66,11 @@ def check_and_create_alerts(
             app_id=app.id,
             alert_type="status_change",
             old_value=json.dumps({"status": old_status}),
-            new_value=json.dumps({"status": new_status}),
+            new_value=json.dumps({
+                "status": new_status,
+                "name": new_name,
+                "version": new_version
+            }),
             message=f"Статус изменился: {old_status or 'N/A'} → {new_status}",
             created_at=datetime.utcnow()
         )
@@ -74,7 +84,10 @@ def check_and_create_alerts(
             app_id=app.id,
             alert_type="version_change",
             old_value=json.dumps({"version": old_version}),
-            new_value=json.dumps({"version": new_version}),
+            new_value=json.dumps({
+                "version": new_version,
+                "name": new_name
+            }),
             message=f"Версия изменилась: {old_version or 'N/A'} → {new_version}",
             created_at=datetime.utcnow()
         )
