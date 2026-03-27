@@ -38,3 +38,8 @@ htmlcov/
 # Временные файлы
 *.tmp
 *.bak
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
