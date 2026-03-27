@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from app.database import SessionLocal
-from app.models import TelegramUser, UserNotificationSettings, UserRole, UserStatus
+from app.models import TelegramUser, UserNotificationSettings
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -96,13 +96,13 @@ class TelegramBotService:
                     telegram_id=telegram_id,
                     username=username,
                     full_name=full_name,
-                    status=UserStatus.pending,
-                    role=UserRole.manager
+                    status="pending",
+                    role="manager"
                 )
                 db.add(user)
                 db.commit()
                 db.refresh(user)
-                
+
                 # Создание настроек уведомлений
                 settings = UserNotificationSettings(telegram_id=user.id)
                 db.add(settings)
@@ -130,7 +130,7 @@ class TelegramBotService:
         
         user = self._get_or_create_user(telegram_id, username, full_name)
         
-        if user.status == UserStatus.approved:
+        if user.status == "approved":
             await update.message.reply_text(
                 f"✅ Вы уже авторизованы!\n\n"
                 f"Роль: *{user.role.value}*\n"
@@ -138,7 +138,7 @@ class TelegramBotService:
                 f"Используйте /help для списка команд.",
                 parse_mode='Markdown'
             )
-        elif user.status == UserStatus.rejected:
+        elif user.status == "rejected":
             await update.message.reply_text(
                 "❌ Ваша заявка была отклонена.\n"
                 "Обратитесь к администратору."
@@ -161,8 +161,8 @@ class TelegramBotService:
         db = self._get_db()
         try:
             admins = db.query(TelegramUser).filter(
-                TelegramUser.role == UserRole.admin,
-                TelegramUser.status == UserStatus.approved
+                TelegramUser.role == "admin",
+                TelegramUser.status == "approved"
             ).all()
             
             message = (
@@ -222,7 +222,7 @@ class TelegramBotService:
         try:
             user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not user or user.status != UserStatus.approved:
+            if not user or user.status != "approved":
                 await update.message.reply_text(
                     "📚 *Справка*\n\n"
                     "/start - Регистрация\n"
@@ -241,13 +241,13 @@ class TelegramBotService:
             help_text += "/help - Эта справка\n"
             
             # Команды для developer и admin
-            if user.role in [UserRole.developer, UserRole.admin]:
+            if user.role in ["developer", "admin"]:
                 help_text += "\n*Для разработчиков:*\n"
                 help_text += "/addapp <bundle_id|app_id> - Добавить приложение\n"
                 help_text += "/checkapp <app_id> - Проверить приложение\n"
             
             # Команды для admin
-            if user.role == UserRole.admin:
+            if user.role == "admin":
                 help_text += "\n*Для администраторов:*\n"
                 help_text += "/users - Список пользователей\n"
                 help_text += "/approve <id> - Одобрить\n"
@@ -267,7 +267,7 @@ class TelegramBotService:
         try:
             user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not user or user.status != UserStatus.approved:
+            if not user or user.status != "approved":
                 await update.message.reply_text("Сначала дождитесь подтверждения.")
                 return
             
@@ -313,7 +313,7 @@ class TelegramBotService:
         try:
             user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not user or user.role != UserRole.admin or user.status != UserStatus.approved:
+            if not user or user.role != "admin" or user.status != "approved":
                 await update.message.reply_text("❌ Недостаточно прав")
                 return
             
@@ -339,7 +339,7 @@ class TelegramBotService:
         try:
             admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not admin or admin.role != UserRole.admin or admin.status != UserStatus.approved:
+            if not admin or admin.role != "admin" or admin.status != "approved":
                 await update.message.reply_text("❌ Недостаточно прав")
                 return
             
@@ -354,7 +354,7 @@ class TelegramBotService:
                 await update.message.reply_text("❌ Пользователь не найден")
                 return
             
-            user.status = UserStatus.approved
+            user.status = "approved"
             user.approved_by = admin.id
             user.updated_at = datetime.utcnow()
             db.commit()
@@ -381,7 +381,7 @@ class TelegramBotService:
         try:
             admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not admin or admin.role != UserRole.admin or admin.status != UserStatus.approved:
+            if not admin or admin.role != "admin" or admin.status != "approved":
                 await update.message.reply_text("❌ Недостаточно прав")
                 return
             
@@ -396,7 +396,7 @@ class TelegramBotService:
                 await update.message.reply_text("❌ Пользователь не найден")
                 return
             
-            user.status = UserStatus.rejected
+            user.status = "rejected"
             user.updated_at = datetime.utcnow()
             db.commit()
             
@@ -422,7 +422,7 @@ class TelegramBotService:
         try:
             admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not admin or admin.role != UserRole.admin or admin.status != UserStatus.approved:
+            if not admin or admin.role != "admin" or admin.status != "approved":
                 await update.message.reply_text("❌ Недостаточно прав")
                 return
             
@@ -443,7 +443,7 @@ class TelegramBotService:
                 await update.message.reply_text("❌ Пользователь не найден")
                 return
             
-            user.role = UserRole(role_name)
+            user.role = role_name
             user.updated_at = datetime.utcnow()
             db.commit()
             
@@ -459,18 +459,18 @@ class TelegramBotService:
         try:
             admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not admin or admin.role != UserRole.admin or admin.status != UserStatus.approved:
+            if not admin or admin.role != "admin" or admin.status != "approved":
                 await update.message.reply_text("❌ Недостаточно прав")
                 return
             
             total = db.query(TelegramUser).count()
-            pending = db.query(TelegramUser).filter(TelegramUser.status == UserStatus.pending).count()
-            approved = db.query(TelegramUser).filter(TelegramUser.status == UserStatus.approved).count()
-            rejected = db.query(TelegramUser).filter(TelegramUser.status == UserStatus.rejected).count()
+            pending = db.query(TelegramUser).filter(TelegramUser.status == "pending").count()
+            approved = db.query(TelegramUser).filter(TelegramUser.status == "approved").count()
+            rejected = db.query(TelegramUser).filter(TelegramUser.status == "rejected").count()
             
-            admins = db.query(TelegramUser).filter(TelegramUser.role == UserRole.admin).count()
-            developers = db.query(TelegramUser).filter(TelegramUser.role == UserRole.developer).count()
-            managers = db.query(TelegramUser).filter(TelegramUser.role == UserRole.manager).count()
+            admins = db.query(TelegramUser).filter(TelegramUser.role == "admin").count()
+            developers = db.query(TelegramUser).filter(TelegramUser.role == "developer").count()
+            managers = db.query(TelegramUser).filter(TelegramUser.role == "manager").count()
             
             await update.message.reply_text(
                 f"📊 *Статистика*\n\n"
