@@ -23,12 +23,17 @@ class Settings(BaseSettings):
     # Monitoring jitter (minutes) - случайное отклонение от интервала
     monitor_jitter: int = 5  # ±5 минут
     
+    # Admin credentials
+    admin_username: str = "admin"
+    admin_password: str = "changeme"
+    
     # App name
     app_name: str = "App Store Monitor"
     
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = 'ignore'  # Игнорировать лишние поля
 
 
 settings = Settings()
