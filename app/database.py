@@ -34,3 +34,23 @@ def get_db():
 def init_db():
     """Инициализация базы данных (создание таблиц)"""
     Base.metadata.create_all(bind=engine)
+
+
+def check_and_init_db():
+    """
+    Проверка и инициализация базы данных
+    Возвращает True если всё успешно
+    """
+    try:
+        # Проверка подключения
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        
+        # Создание таблиц
+        init_db()
+        
+        return True
+    except Exception as e:
+        print(f"Ошибка инициализации БД: {e}")
+        return False
