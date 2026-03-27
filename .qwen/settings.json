@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git commit *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(echo *)"
     ]
   },
   "$version": 3
