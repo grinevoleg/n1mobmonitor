@@ -76,8 +76,29 @@ ADMIN_PASSWORD=changeme
 
 ### 4. Запуск
 
+#### Вариант A: Прямой запуск
+
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Вариант B: Docker Compose (рекомендуется)
+
+```bash
+# Скопируйте .env.example
+cp .env.example .env
+
+# Настройте переменные в .env
+nano .env
+
+# Запустите контейнеры
+docker-compose up -d
+
+# Просмотр логов
+docker-compose logs -f app
+
+# Остановка
+docker-compose down
 ```
 
 Откройте:
