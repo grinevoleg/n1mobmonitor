@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Store Monitor - Настройки</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh; color: #fff;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        header { text-align: center; margin-bottom: 40px; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: #8892b0; font-size: 1.1rem; }
+        .nav { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; }
+        .nav a { color: #8892b0; text-decoration: none; padding: 10px 20px; border-radius: 8px; background: rgba(255, 255, 255, 0.05); transition: all 0.3s; }
+        .nav a:hover, .nav a.active { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
+        .settings-section { background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .settings-section h2 { margin-bottom: 20px; color: #00d9ff; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #8892b0; font-size: 0.9rem; }
+        .form-group input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: #fff; font-size: 1rem; }
+        .form-group input:focus { outline: none; border-color: #00d9ff; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .btn { padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(90deg, #00d9ff, #00ff88); color: #1a1a2e; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .btn-danger { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .toggle { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.2); transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #00d9ff; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        th { color: #8892b0; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        .action-btn { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; margin-right: 8px; transition: all 0.3s; }
+        .action-btn:hover { transform: translateY(-2px); }
+        .empty-state { text-align: center; padding: 40px; color: #8892b0; }
+        
+        /* Toast уведомления */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { min-width: 320px; max-width: 450px; padding: 16px 20px; border-radius: 12px; background: rgba(22, 33, 62, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease; overflow: hidden; }
+        .toast.success { border-left: 4px solid #00ff88; }
+        .toast.error { border-left: 4px solid #ff4757; }
+        .toast.warning { border-left: 4px solid #ffa502; }
+        .toast.info { border-left: 4px solid #00d9ff; }
+        .toast-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 600; margin-bottom: 4px; font-size: 0.95rem; }
+        .toast-message { color: #8892b0; font-size: 0.85rem; }
+        .toast-close { background: none; border: none; color: #8892b0; cursor: pointer; padding: 4px; font-size: 1.2rem; transition: color 0.3s; }
+        .toast-close:hover { color: #fff; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        
+        /* Модальные окна */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; visibility: hidden; transition: all 0.3s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; padding: 32px; max-width: 420px; width: 90%; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); transform: scale(0.9); transition: transform 0.3s; }
+        .modal-overlay.active .modal { transform: scale(1); }
+        .modal-title { font-size: 1.5rem; margin-bottom: 12px; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .modal-message { color: #8892b0; margin-bottom: 24px; line-height: 1.6; }
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+        .modal-input { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); color: #fff; font-size: 1rem; margin-bottom: 16px; }
+        .modal-input:focus { outline: none; border-color: #00d9ff; }
+        @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="toast-container" id="toast-container"></div>
+    
+    <!-- Модальное окно подтверждения -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal">
+            <h3 class="modal-title" id="modal-title">Подтверждение</h3>
+            <p class="modal-message" id="modal-message">Вы уверены?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                <button class="btn btn-danger" id="modal-confirm-btn">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>⚙️ Настройки</h1>
+            <p class="subtitle">App Store Monitor - Управление настройками</p>
+        </header>
+        <nav class="nav">
+            <a href="/dashboard">📊 Дашборд</a>
+            <a href="/alerts">🔔 Алерты</a>
+            <a href="/settings" class="active">⚙️ Настройки</a>
+        </nav>
+
+        <!-- Настройки мониторинга -->
+        <div class="settings-section">
+            <h2>📊 Настройки мониторинга</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Интервал проверки (минуты)</label>
+                    <input type="number" id="monitor_interval" value="30" min="5">
+                </div>
+                <div class="form-group">
+                    <label>Случайное отклонение (минуты)</label>
+                    <input type="number" id="monitor_jitter" value="5" min="0">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveMonitoringSettings()">Сохранить</button>
+        </div>
+
+        <!-- Email уведомления -->
+        <div class="settings-section">
+            <h2>📧 Email уведомления</h2>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 12px;">
+                    <label class="toggle">
+                        <input type="checkbox" id="email_enabled">
+                        <span class="slider"></span>
+                    </label>
+                    Включить Email уведомления
+                </label>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SMTP сервер</label>
+                    <input type="text" id="smtp_host" placeholder="smtp.gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>SMTP порт</label>
+                    <input type="number" id="smtp_port" value="587">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SMTP пользователь</label>
+                    <input type="text" id="smtp_user">
+                </div>
+                <div class="form-group">
+                    <label>SMTP пароль</label>
+                    <input type="password" id="smtp_password">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Email для уведомлений</label>
+                <input type="email" id="alert_email">
+            </div>
+            <button class="btn btn-primary" onclick="saveEmailSettings()">Сохранить</button>
+            <button class="btn btn-secondary" onclick="testEmail()">Тест</button>
+        </div>
+
+        <!-- Telegram уведомления -->
+        <div class="settings-section">
+            <h2>✈️ Telegram уведомления</h2>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 12px;">
+                    <label class="toggle">
+                        <input type="checkbox" id="telegram_enabled">
+                        <span class="slider"></span>
+                    </label>
+                    Включить Telegram уведомления
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Bot Token</label>
+                <input type="text" id="telegram_bot_token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+            </div>
+            <div class="form-group">
+                <label>Chat ID</label>
+                <input type="text" id="telegram_chat_id" placeholder="-1001234567890">
+            </div>
+            <button class="btn btn-primary" onclick="saveTelegramSettings()">Сохранить</button>
+            <button class="btn btn-secondary" onclick="testTelegram()">Тест</button>
+        </div>
+
+        <!-- Управление приложениями -->
+        <div class="settings-section">
+            <h2>📱 Приложения</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <input type="text" id="new_bundle_id" placeholder="Bundle ID (com.example.app)" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
+                <input type="number" id="new_app_id" placeholder="Apple ID" style="width: 150px; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
+                <button class="btn btn-primary" onclick="addApp()">Добавить</button>
+            </div>
+            <table>
+                <thead><tr><th>Bundle ID</th><th>Apple ID</th><th>Название</th><th>Статус</th><th>Мониторинг</th><th>Действия</th></tr></thead>
+                <tbody id="apps-table"><tr><td colspan="6" class="empty-state">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+
+        <!-- API ключи -->
+        <div class="settings-section">
+            <h2>🔑 API ключи</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <input type="text" id="new_key_desc" placeholder="Описание ключа" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
+                <button class="btn btn-primary" onclick="createKey()">Создать ключ</button>
+            </div>
+            <table>
+                <thead><tr><th>Ключ</th><th>Описание</th><th>Создан</th><th>Действия</th></tr></thead>
+                <tbody id="keys-table"><tr><td colspan="4" class="empty-state">Загрузка...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let settings = {};
+        let pendingAction = null;
+
+        // Toast уведомления
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Модальные окна
+        function showModal(title, message, onConfirm) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('confirm-modal').classList.add('active');
+            pendingAction = onConfirm;
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.remove('active');
+            pendingAction = null;
+        }
+
+        document.getElementById('modal-confirm-btn').onclick = () => {
+            if (pendingAction) pendingAction();
+            closeModal();
+        };
+
+        // Авторизация
+        function getAuthHeader() {
+            const auth = localStorage.getItem('adminAuth');
+            return auth ? `Basic ${auth}` : null;
+        }
+
+        function checkAuth() {
+            if (!getAuthHeader()) {
+                showAuthPrompt();
+                return false;
+            }
+            return true;
+        }
+
+        function showAuthPrompt() {
+            showModal('Требуется авторизация', 'Введите логин и пароль администратора для доступа к настройкам.', () => {
+                const login = prompt('Логин:', 'admin');
+                const password = prompt('Пароль:', '');
+                if (login && password) {
+                    localStorage.setItem('adminAuth', btoa(`${login}:${password}`));
+                    loadSettings();
+                }
+            });
+        }
+
+        async function loadSettings() {
+            if (!checkAuth()) return;
+            try {
+                const response = await fetch('/api/v1/settings', { headers: { 'Authorization': getAuthHeader() } });
+                if (response.status === 401) {
+                    localStorage.removeItem('adminAuth');
+                    showAuthPrompt();
+                    return;
+                }
+                settings = await response.json();
+                populateSettings();
+            } catch (error) {
+                showToast('Ошибка', 'Не удалось загрузить настройки', 'error');
+            }
+        }
+
+        function populateSettings() {
+            document.getElementById('monitor_interval').value = settings.monitor_interval || 30;
+            document.getElementById('monitor_jitter').value = settings.monitor_jitter || 5;
+            document.getElementById('email_enabled').checked = settings.email_enabled === 'true';
+            document.getElementById('smtp_host').value = settings.smtp_host || '';
+            document.getElementById('smtp_port').value = settings.smtp_port || 587;
+            document.getElementById('smtp_user').value = settings.smtp_user || '';
+            document.getElementById('smtp_password').value = settings.smtp_password || '';
+            document.getElementById('alert_email').value = settings.alert_email || '';
+            document.getElementById('telegram_enabled').checked = settings.telegram_enabled === 'true';
+            document.getElementById('telegram_bot_token').value = settings.telegram_bot_token || '';
+            document.getElementById('telegram_chat_id').value = settings.telegram_chat_id || '';
+            loadApps();
+            loadKeys();
+        }
+
+        async function saveSettings(data, successMsg) {
+            if (!checkAuth()) return;
+            try {
+                const response = await fetch('/api/v1/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() },
+                    body: JSON.stringify({ settings: data })
+                });
+                if (response.ok) {
+                    showToast('Успешно', successMsg, 'success');
+                    settings = { ...settings, ...data };
+                } else {
+                    const err = await response.json();
+                    showToast('Ошибка', err.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Ошибка', error.message, 'error');
+            }
+        }
+
+        async function saveMonitoringSettings() {
+            await saveSettings({
+                monitor_interval: document.getElementById('monitor_interval').value,
+                monitor_jitter: document.getElementById('monitor_jitter').value
+            }, 'Настройки мониторинга сохранены');
+        }
+
+        async function saveEmailSettings() {
+            await saveSettings({
+                email_enabled: document.getElementById('email_enabled').checked.toString(),
+                smtp_host: document.getElementById('smtp_host').value,
+                smtp_port: document.getElementById('smtp_port').value,
+                smtp_user: document.getElementById('smtp_user').value,
+                smtp_password: document.getElementById('smtp_password').value,
+                alert_email: document.getElementById('alert_email').value
+            }, 'Настройки Email сохранены');
+        }
+
+        async function saveTelegramSettings() {
+            await saveSettings({
+                telegram_enabled: document.getElementById('telegram_enabled').checked.toString(),
+                telegram_bot_token: document.getElementById('telegram_bot_token').value,
+                telegram_chat_id: document.getElementById('telegram_chat_id').value
+            }, 'Настройки Telegram сохранены');
+        }
+
+        async function testEmail() {
+            if (!checkAuth()) return;
+            showToast('Отправка', 'Тестовое Email сообщение отправляется...', 'info');
+            const response = await fetch('/api/v1/settings/test-email', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
+            const result = await response.json();
+            showToast(response.ok ? 'Успешно' : 'Ошибка', result.message || result.detail, response.ok ? 'success' : 'error');
+        }
+
+        async function testTelegram() {
+            if (!checkAuth()) return;
+            showToast('Отправка', 'Тестовое Telegram сообщение отправляется...', 'info');
+            const response = await fetch('/api/v1/settings/test-telegram', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
+            const result = await response.json();
+            showToast(response.ok ? 'Успешно' : 'Ошибка', result.message || result.detail, response.ok ? 'success' : 'error');
+        }
+
+        async function loadApps() {
+            if (!checkAuth()) return;
+            const response = await fetch('/api/v1/settings/apps', { headers: { 'Authorization': getAuthHeader() } });
+            if (!response.ok) return;
+            const apps = await response.json();
+            document.getElementById('apps-table').innerHTML = apps.map(app => `
+                <tr>
+                    <td>${app.bundle_id || '—'}</td>
+                    <td>${app.app_id || '—'}</td>
+                    <td>${app.name || '—'}</td>
+                    <td>${getStatusBadge(app.last_status)}</td>
+                    <td>
+                        <label class="toggle" style="transform: scale(0.8);">
+                            <input type="checkbox" ${app.is_active ? 'checked' : ''} onchange="toggleMonitoring(${app.id}, this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td>
+                        <button class="action-btn btn-secondary" onclick="checkApp(${app.id})" title="Проверить">🔄</button>
+                        <button class="action-btn btn-danger" onclick="confirmDeleteApp(${app.id})" title="Удалить">✕</button>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="6" class="empty-state">Нет приложений</td></tr>';
+        }
+
+        function getStatusBadge(status) {
+            if (!status) return '<span style="color: #8892b0;">Не проверено</span>';
+            const colors = { 'available': '#00ff88', 'unavailable': '#ff4757', 'error': '#ffa502' };
+            const icons = { 'available': '🟢', 'unavailable': '🔴', 'error': '🟡' };
+            return `<span style="color: ${colors[status] || '#8892b0'};">${icons[status] || '⚪'} ${status}</span>`;
+        }
+
+        async function addApp() {
+            if (!checkAuth()) return;
+            const bundle_id = document.getElementById('new_bundle_id').value;
+            const app_id = document.getElementById('new_app_id').value;
+            if (!bundle_id && !app_id) { showToast('Ошибка', 'Введите Bundle ID или Apple ID', 'error'); return; }
+
+            const body = {};
+            if (bundle_id) body.bundle_id = bundle_id;
+            if (app_id) body.app_id = parseInt(app_id);
+
+            showToast('Добавление', 'Приложение добавляется и проверяется...', 'info');
+            const response = await fetch('/api/v1/settings/apps', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() },
+                body: JSON.stringify(body)
+            });
+
+            if (response.ok) {
+                showToast('Успешно', 'Приложение добавлено и проверено', 'success');
+                document.getElementById('new_bundle_id').value = '';
+                document.getElementById('new_app_id').value = '';
+                loadApps();
+            } else {
+                const err = await response.json();
+                showToast('Ошибка', err.detail, 'error');
+            }
+        }
+
+        async function toggleMonitoring(appId, isActive) {
+            if (!checkAuth()) return;
+            const response = await fetch(`/api/v1/settings/apps/${appId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': getAuthHeader() },
+                body: JSON.stringify({ is_active: isActive })
+            });
+            if (!response.ok) {
+                showToast('Ошибка', 'Не удалось изменить статус мониторинга', 'error');
+                loadApps();
+            } else {
+                showToast('Успешно', isActive ? 'Мониторинг включён' : 'Мониторинг выключен', 'success');
+            }
+        }
+
+        async function checkApp(appId) {
+            if (!checkAuth()) return;
+            showToast('Проверка', 'Приложение проверяется...', 'info');
+            const response = await fetch(`/api/v1/apps/${appId}/check`, {
+                method: 'POST',
+                headers: { 'Authorization': getAuthHeader() }
+            });
+            if (response.ok) {
+                showToast('Успешно', 'Приложение проверено', 'success');
+                loadApps();
+            } else {
+                const err = await response.json();
+                showToast('Ошибка', err.detail || 'Ошибка проверки', 'error');
+            }
+        }
+
+        function confirmDeleteApp(id) {
+            showModal('Удаление приложения', 'Вы уверены, что хотите удалить это приложение из мониторинга?', () => deleteApp(id));
+        }
+
+        async function deleteApp(id) {
+            if (!checkAuth()) return;
+            const response = await fetch(`/api/v1/settings/apps/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': getAuthHeader() }
+            });
+            if (response.ok) {
+                showToast('Успешно', 'Приложение удалено', 'success');
+                loadApps();
+            } else {
+                showToast('Ошибка', 'Не удалось удалить приложение', 'error');
+            }
+        }
+
+        async function loadKeys() {
+            if (!checkAuth()) return;
+            const response = await fetch('/api/v1/settings/keys', { headers: { 'Authorization': getAuthHeader() } });
+            if (!response.ok) return;
+            const keys = await response.json();
+            document.getElementById('keys-table').innerHTML = keys.map(key => `
+                <tr>
+                    <td><code style="background: rgba(0,217,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${key.key.substring(0, 20)}...</code></td>
+                    <td>${key.description || '—'}</td>
+                    <td>${new Date(key.created_at).toLocaleDateString()}</td>
+                    <td><button class="action-btn btn-danger" onclick="confirmRevokeKey('${key.key}')">Отозвать</button></td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" class="empty-state">Нет ключей</td></tr>';
+        }
+
+        function confirmRevokeKey(key) {
+            showModal('Отозвать ключ', 'Этот ключ перестанет работать. Продолжить?', () => revokeKey(key));
+        }
+
+        async function createKey() {
+            if (!checkAuth()) return;
+            const description = document.getElementById('new_key_desc').value;
+            const response = await fetch(`/api/v1/settings/keys?description=${encodeURIComponent(description)}`, {
+                method: 'POST',
+                headers: { 'Authorization': getAuthHeader() }
+            });
+            if (response.ok) {
+                const key = await response.json();
+                showToast('Ключ создан', `Сохраните ваш ключ: ${key.key}`, 'success');
+                document.getElementById('new_key_desc').value = '';
+                loadKeys();
+            } else {
+                const err = await response.json();
+                showToast('Ошибка', err.detail, 'error');
+            }
+        }
+
+        async function revokeKey(key) {
+            if (!checkAuth()) return;
+            await fetch(`/api/v1/settings/keys/${encodeURIComponent(key)}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': getAuthHeader() }
+            });
+            showToast('Успешно', 'Ключ отозван', 'success');
+            loadKeys();
+        }
+
+        // Инициализация
+        loadSettings();
+    </script>
+</body>
+</html>
