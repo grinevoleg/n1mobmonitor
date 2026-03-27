@@ -11,7 +11,9 @@ from app.api.routes import router as api_router
 from app.api.dashboard import router as dashboard_router
 from app.api.alerts import router as alerts_router
 from app.api.settings import router as settings_router
+from app.api.telegram_users import router as telegram_users_router
 from app.services.monitor import monitor_service
+from app.services.telegram_bot import telegram_bot_service
 
 # Настройка логирования
 logging.basicConfig(
@@ -73,6 +75,20 @@ async def lifespan(app: FastAPI):
 
     # Запуск фонового мониторинга
     monitor_service.start()
+    
+    # Запуск Telegram бота (в отдельном потоке)
+    import threading
+    from app.config import settings
+    
+    telegram_token = settings.__dict__.get("telegram_bot_token")
+    if telegram_token:
+        bot_thread = threading.Thread(
+            target=telegram_bot_service.start,
+            args=(telegram_token,),
+            daemon=True
+        )
+        bot_thread.start()
+        logger.info("Telegram bot thread started")
 
     yield
 
@@ -103,6 +119,7 @@ app.include_router(dashboard_router)
 app.include_router(api_router)
 app.include_router(alerts_router)
 app.include_router(settings_router)
+app.include_router(telegram_users_router)
 
 
 @app.get("/health")

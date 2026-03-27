@@ -168,3 +168,50 @@ class AppUpdate(BaseModel):
     bundle_id: Optional[str] = None
     app_id: Optional[int] = None
     is_active: Optional[bool] = None
+
+
+# === Telegram User Schemas ===
+
+class TelegramUserResponse(BaseModel):
+    """Схема ответа с пользователем Telegram"""
+    id: int
+    telegram_id: str
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    role: str
+    status: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    approved_by: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TelegramUserUpdate(BaseModel):
+    """Схема для обновления пользователя"""
+    role: Optional[str] = None
+    status: Optional[str] = None
+
+
+class UserNotificationSettingsResponse(BaseModel):
+    """Схема настроек уведомлений"""
+    id: int
+    telegram_id: int
+    notify_status_change: bool
+    notify_version_change: bool
+    notify_error: bool
+    notify_app_added: bool
+    notify_unavailable: bool
+
+    class Config:
+        from_attributes = True
+
+
+class UserNotificationSettingsUpdate(BaseModel):
+    """Схема для обновления настроек уведомлений"""
+    notify_status_change: Optional[bool] = None
+    notify_version_change: Optional[bool] = None
+    notify_error: Optional[bool] = None
+    notify_app_added: Optional[bool] = None
+    notify_unavailable: Optional[bool] = None

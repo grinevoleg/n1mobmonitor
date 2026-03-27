@@ -4,13 +4,52 @@ import httpx
 import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
-from app.models import Setting
+from app.models import Setting, TelegramUser, UserNotificationSettings, UserRole, UserStatus
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def get_approved_users_for_alert(db: Session, alert_type: str) -> List[Tuple[TelegramUser, UserNotificationSettings]]:
+    """
+    Получение списка пользователей которые должны получить уведомление
+    
+    Args:
+        db: сессия БД
+        alert_type: тип алерта
+        
+    Returns:
+        список кортежей (user, settings)
+    """
+    users = db.query(TelegramUser).filter(
+        TelegramUser.status == UserStatus.approved
+    ).all()
+    
+    result = []
+    for user in users:
+        # Проверка настроек уведомлений
+        if not user.notification_settings:
+            continue
+        
+        settings = user.notification_settings
+        
+        # Проверка подписки на тип уведомления
+        notify_map = {
+            "status_change": settings.notify_status_change,
+            "version_change": settings.notify_version_change,
+            "error": settings.notify_error,
+            "app_added": settings.notify_app_added,
+            "unavailable": settings.notify_unavailable,
+            "test": True  # Тестовые всегда отправляем
+        }
+        
+        if notify_map.get(alert_type, False):
+            result.append((user, settings))
+    
+    return result
 
 
 def get_setting(db: Session, key: str, default: str = "") -> str:
@@ -259,31 +298,45 @@ async def send_alert(
     app_identifier: str,
     old_value: Optional[str] = None,
     new_value: Optional[str] = None
-) -> tuple:
+) -> dict:
     """
-    Отправка уведомления через все включённые каналы
+    Отправка уведомления всем пользователям через все каналы
     
     Returns:
-        (email_sent, telegram_sent)
+        dict со статистикой отправок
     """
-    # Формирование заголовка в зависимости от типа
-    type_titles = {
-        "status_change": "Изменение статуса",
-        "version_change": "Обновление версии",
-        "name_change": "Изменение названия",
-        "error": "Ошибка проверки",
-        "unavailable": "Приложение недоступно",
-        "app_added": "Новое приложение",
-        "test": "Тестовое уведомление"
-    }
-    
-    title = type_titles.get(alert_type, alert_type)
-    full_message = f"{title}: {old_value or ''} → {new_value or ''}" if old_value else f"{title}"
-    
-    email_sent = await send_email_alert(alert_type, app_name, app_identifier, old_value, new_value)
-    telegram_sent = await send_telegram_alert(alert_type, app_name, app_identifier, old_value, new_value)
-    
-    return email_sent, telegram_sent
+    db = SessionLocal()
+    try:
+        # Получаем пользователей для этого типа алерта
+        users = get_approved_users_for_alert(db, alert_type)
+        
+        email_sent_count = 0
+        telegram_sent_count = 0
+        
+        for user, user_settings in users:
+            # Отправка Email
+            try:
+                # Для email используем глобальные настройки
+                if await send_email_alert(alert_type, app_name, app_identifier, old_value, new_value):
+                    email_sent_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send email to user {user.id}: {e}")
+            
+            # Отправка Telegram
+            try:
+                if await send_telegram_alert_to_user(user, alert_type, app_name, app_identifier, old_value, new_value):
+                    telegram_sent_count += 1
+            except Exception as e:
+                logger.error(f"Failed to send telegram to user {user.id}: {e}")
+        
+        return {
+            "email_sent": email_sent_count,
+            "telegram_sent": telegram_sent_count,
+            "total_users": len(users)
+        }
+        
+    finally:
+        db.close()
 
 
 # Функции для тестирования уведомлений
@@ -307,3 +360,115 @@ async def test_telegram_notification() -> tuple:
         old_value="1.0.0",
         new_value="1.0.1"
     )
+
+
+async def send_telegram_alert_to_user(
+    user: TelegramUser,
+    alert_type: str,
+    app_name: str,
+    app_identifier: str,
+    old_value: Optional[str] = None,
+    new_value: Optional[str] = None
+) -> bool:
+    """
+    Отправка Telegram уведомления конкретному пользователю
+    
+    Args:
+        user: модель пользователя
+        alert_type: тип алерта
+        app_name: название приложения
+        app_identifier: идентификатор
+        old_value: старое значение
+        new_value: новое значение
+        
+    Returns:
+        True если успешно
+    """
+    db = SessionLocal()
+    try:
+        settings_dict = get_all_settings(db)
+        bot_token = settings_dict.get("telegram_bot_token", "")
+        
+        if not bot_token:
+            return False
+        
+        # Формирование сообщения (такое же как в send_telegram_alert)
+        emoji = {
+            "status_change": "🔴", 
+            "version_change": "🔵", 
+            "error": "🟡",
+            "app_added": "🆕",
+            "unavailable": "🔴",
+            "test": "⚪"
+        }.get(alert_type, "⚪")
+        
+        # Парсинг значений
+        old_data = json.loads(old_value) if old_value else {}
+        new_data = json.loads(new_value) if new_value else {}
+        
+        message = f"{emoji} *App Store Monitor*\n\n"
+        
+        if alert_type == "app_added":
+            message += f"*🆕 Новое приложение в мониторинге*\n\n"
+            message += f"*Название:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if new_data.get('name'):
+                message += f"*Полное имя:* `{new_data['name']}`\n"
+            if new_data.get('version'):
+                message += f"*Версия:* `{new_data['version']}`\n"
+            if new_data.get('status'):
+                status_text = {"available": "✅ Доступно", "unavailable": "❌ Недоступно", "error": "⚠️ Ошибка"}.get(new_data['status'], new_data['status'])
+                message += f"*Статус:* {status_text}\n"
+        elif alert_type == "version_change":
+            message += f"*🔵 Обновление версии*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if old_data.get('version'):
+                message += f"*Старая версия:* `{old_data['version']}`\n"
+            if new_data.get('version'):
+                message += f"*Новая версия:* `{new_data['version']}`\n"
+        elif alert_type == "status_change":
+            message += f"*🔴 Изменение статуса*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if old_data.get('status'):
+                message += f"*Старый статус:* `{old_data['status']}`\n"
+            if new_data.get('status'):
+                status_text = {"available": "✅ Доступно", "unavailable": "❌ Недоступно", "error": "⚠️ Ошибка"}.get(new_data['status'], new_data['status'])
+                message += f"*Новый статус:* {status_text}\n"
+        elif alert_type == "error":
+            message += f"*🟡 Ошибка проверки*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if new_data.get('error'):
+                message += f"*Ошибка:* `{new_data['error']}`\n"
+        elif alert_type == "unavailable":
+            message += f"*🔴 Приложение недоступно*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            message += f"*Статус:* ❌ Не найдено в App Store\n"
+        elif alert_type == "test":
+            message += f"*⚪ Тестовое уведомление*\n\n"
+            message += f"Это тестовое сообщение от App Store Monitor.\n"
+        
+        message += f"\n_App Store Monitor_"
+        
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        payload = {
+            "chat_id": user.telegram_id,
+            "text": message.strip(),
+            "parse_mode": "Markdown"
+        }
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(url, json=payload)
+            response.raise_for_status()
+        
+        logger.info(f"Telegram уведомление отправлено пользователю {user.telegram_id}: {alert_type}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка отправки Telegram пользователю {user.telegram_id}: {e}")
+        return False
+    finally:
+        db.close()

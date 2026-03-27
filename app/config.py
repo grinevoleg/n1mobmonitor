@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "changeme"
     
+    # Telegram bot token
+    telegram_bot_token: Optional[str] = None
+    
     # App name
     app_name: str = "App Store Monitor"
     
