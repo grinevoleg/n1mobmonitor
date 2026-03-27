@@ -111,8 +111,8 @@ class TelegramUser(Base):
     telegram_id = Column(String, unique=True, index=True, nullable=False)  # Telegram user ID
     username = Column(String, nullable=True)  # @username
     full_name = Column(String, nullable=True)  # Full name
-    role = Column(Enum(UserRole), default=UserRole.manager, nullable=False)  # admin/developer/manager
-    status = Column(Enum(UserStatus), default=UserStatus.pending, nullable=False)  # pending/approved/rejected
+    role = Column(String, default="manager", nullable=False)  # admin/developer/manager
+    status = Column(String, default="pending", nullable=False)  # pending/approved/rejected
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     approved_by = Column(Integer, ForeignKey("telegram_users.id"), nullable=True)  # Кто одобрил
