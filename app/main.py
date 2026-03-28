@@ -70,6 +70,13 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("База данных инициализирована")
     
+    # Автоматическая миграция БД (исправление ENUM на TEXT)
+    from migrate_db import migrate_database
+    if migrate_database():
+        logger.info("Миграция БД выполнена успешно")
+    else:
+        logger.warning("Миграция БД не выполнена, возможны ошибки")
+    
     # Инициализация настроек по умолчанию
     init_default_settings()
 

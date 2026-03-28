@@ -43,4 +43,8 @@ htmlcov/
 *.pid
 *.seed
 *.pid.lock
+
+# Миграции
+__pycache__/
+*.pyc
 .qwen/
