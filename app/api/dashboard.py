@@ -25,14 +25,14 @@ def get_status_icon(status: str) -> str:
 
 
 def get_status_display(status: str) -> str:
-    """Возвращает текстовое отображение статуса"""
+    """Returns text display of status"""
     if status == "available":
-        return "Доступно"
+        return "Available"
     elif status == "unavailable":
-        return "Недоступно"
+        return "Unavailable"
     elif status == "error":
-        return "Ошибка"
-    return "Не проверено"
+        return "Error"
+    return "Not Checked"
 
 
 @router.get("/", include_in_schema=False)
