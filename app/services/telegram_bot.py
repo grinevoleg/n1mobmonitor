@@ -51,7 +51,7 @@ class TelegramBotService:
         
         # Обработчик callback query (для кнопок настроек)
         self.application.add_handler(CallbackQueryHandler(self.callback_settings))
-        self.application.add_handler(CallbackQueryHandler(self.callback_users, pattern="^(approve_|reject_|role_)"))
+        self.application.add_handler(CallbackQueryHandler(self.callback_users, pattern=r"^(approve|reject|role_admin|role_dev|role_mgr)_"))
         
         # Запуск polling с созданием event loop
         import asyncio
