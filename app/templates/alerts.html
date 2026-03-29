@@ -349,7 +349,7 @@
             <div class="alerts-header">
                 <h2>События</h2>
                 <div>
-                    <button class="btn btn-secondary" onclick="markAllAsRead()">Прочитать все</button>
+                    <button class="btn btn-secondary" onclick="markВсеAsПрочитано()">Прочитать все</button>
                 </div>
             </div>
             
@@ -478,7 +478,7 @@
                         </span>
                     </td>
                     <td>
-                        ${!alert.is_read ? `<button class="action-btn read" onclick="markAsRead(${alert.id})">✓</button>` : ''}
+                        ${!alert.is_read ? `<button class="action-btn read" onclick="markAsПрочитано(${alert.id})">✓</button>` : ''}
                         <button class="action-btn delete" onclick="deleteAlert(${alert.id})">✕</button>
                     </td>
                 </tr>
@@ -498,7 +498,7 @@
         }
         
         // Отметить как прочитанное
-        async function markAsRead(alertId) {
+        async function markAsПрочитано(alertId) {
             try {
                 await fetch(`/api/v1/alerts/${alertId}/read`, { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
@@ -508,7 +508,7 @@
         }
         
         // Отметить все как прочитанное
-        async function markAllAsRead() {
+        async function markВсеAsПрочитано() {
             try {
                 await fetch('/api/v1/alerts/read-all', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
@@ -530,9 +530,9 @@
         }
         
         // Фильтры
-        document.querySelectorAll('.filter-btn').forEach(btn => {
+        document.querySelectorВсе('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorВсе('.filter-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentFilter = btn.dataset.filter;
                 renderAlerts();

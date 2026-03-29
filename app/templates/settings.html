@@ -239,7 +239,7 @@
             <h2>🔑 API ключи</h2>
             <div style="display: flex; gap: 10px; margin-bottom: 16px;">
                 <input type="text" id="new_key_desc" placeholder="Описание ключа" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
-                <button class="btn btn-primary" onclick="createKey()">Создать ключ</button>
+                <button class="btn btn-primary" onclick="createКлюч()">Создать ключ</button>
             </div>
             <table>
                 <thead><tr><th>Ключ</th><th>Описание</th><th>Создан</th><th>Действия</th></tr></thead>
@@ -273,7 +273,7 @@
             const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
             
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+            toast.classИмя = `toast ${type}`;
             toast.innerHTML = `
                 <span class="toast-icon">${icons[type]}</span>
                 <div class="toast-content">
@@ -371,7 +371,7 @@
             document.getElementById('smtp_password').value = settings.smtp_password || '';
             document.getElementById('alert_email').value = settings.alert_email || '';
             loadApps();
-            loadKeys();
+            loadКлючs();
         }
 
         async function saveSettings(data, successMsg) {
@@ -424,7 +424,7 @@
                     <td>${app.bundle_id || '—'}</td>
                     <td>${app.app_id || '—'}</td>
                     <td>${app.name || '—'}</td>
-                    <td>${getStatusBadge(app.last_status)}</td>
+                    <td>${getСтатусBadge(app.last_status)}</td>
                     <td>
                         <label class="toggle" style="transform: scale(0.8);">
                             <input type="checkbox" ${app.is_active ? 'checked' : ''} onchange="toggleMonitoring(${app.id}, this.checked)">
@@ -439,7 +439,7 @@
             `).join('') || '<tr><td colspan="6" class="empty-state">Нет приложений</td></tr>';
         }
 
-        function getStatusBadge(status) {
+        function getСтатусBadge(status) {
             if (!status) return '<span style="color: #8892b0;">Не проверено</span>';
             const colors = { 'available': '#00ff88', 'unavailable': '#ff4757', 'error': '#ffa502' };
             const icons = { 'available': '🟢', 'unavailable': '🔴', 'error': '🟡' };
@@ -523,7 +523,7 @@
             }
         }
 
-        async function loadKeys() {
+        async function loadКлючs() {
             if (!checkAuth()) return;
             showLoader('keys-table');
             const response = await fetch('/api/v1/settings/keys', { headers: { 'Authorization': getAuthHeader() } });
@@ -533,17 +533,17 @@
                 <tr>
                     <td><code style="background: rgba(0,217,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${key.key.substring(0, 20)}...</code></td>
                     <td>${key.description || '—'}</td>
-                    <td>${new Date(key.created_at).toLocaleDateString()}</td>
-                    <td><button class="action-btn btn-danger" onclick="confirmRevokeKey('${key.key}')">Отозвать</button></td>
+                    <td>${new Дата(key.created_at).toLocaleДатаString()}</td>
+                    <td><button class="action-btn btn-danger" onclick="confirmRevokeКлюч('${key.key}')">Отозвать</button></td>
                 </tr>
             `).join('') || '<tr><td colspan="4" class="empty-state">Нет ключей</td></tr>';
         }
 
-        function confirmRevokeKey(key) {
-            showModal('Отозвать ключ', 'Этот ключ перестанет работать. Продолжить?', () => revokeKey(key));
+        function confirmRevokeКлюч(key) {
+            showModal('Отозвать ключ', 'Этот ключ перестанет работать. Продолжить?', () => revokeКлюч(key));
         }
 
-        async function createKey() {
+        async function createКлюч() {
             if (!checkAuth()) return;
             const description = document.getElementById('new_key_desc').value;
             const response = await fetch(`/api/v1/settings/keys?description=${encodeURIComponent(description)}`, {
@@ -554,21 +554,21 @@
                 const key = await response.json();
                 showToast('Ключ создан', `Сохраните ваш ключ: ${key.key}`, 'success');
                 document.getElementById('new_key_desc').value = '';
-                loadKeys();
+                loadКлючs();
             } else {
                 const err = await response.json();
                 showToast('Ошибка', err.detail, 'error');
             }
         }
 
-        async function revokeKey(key) {
+        async function revokeКлюч(key) {
             if (!checkAuth()) return;
             await fetch(`/api/v1/settings/keys/${encodeURIComponent(key)}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': getAuthHeader() }
             });
             showToast('Успешно', 'Ключ отозван', 'success');
-            loadKeys();
+            loadКлючs();
         }
 
         // Инициализация
@@ -611,14 +611,14 @@
                             <td>${user.username ? '@'+user.username : '—'}</td>
                             <td>${user.full_name || '—'}</td>
                             <td>
-                                <select onchange="changeRole(${user.id}, this.value)" style="padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                                <select onchange="changeРоль(${user.id}, this.value)" style="padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
                                     <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>👑 Admin</option>
                                     <option value="developer" ${user.role === 'developer' ? 'selected' : ''}>💻 Developer</option>
                                     <option value="manager" ${user.role === 'manager' ? 'selected' : ''}>👤 Manager</option>
                                 </select>
                             </td>
                             <td>${statusEmoji} ${user.status}</td>
-                            <td>${new Date(user.created_at).toLocaleDateString('ru-RU')}</td>
+                            <td>${new Дата(user.created_at).toLocaleДатаString('ru-RU')}</td>
                             <td>
                                 ${user.status === 'pending' ? `
                                     <button class="action-btn" style="background: rgba(0,255,136,0.2); color: #00ff88;" onclick="approveUser(${user.id})">✓</button>
@@ -689,12 +689,12 @@
         }
 
         // Изменить роль
-        async function changeRole(userId, newRole) {
+        async function changeРоль(userId, newРоль) {
             if (!checkAuth()) return;
-            showModal('Изменить роль', `Изменить роль на ${newRole}?`, () => doChangeRole(userId, newRole));
+            showModal('Изменить роль', `Изменить роль на ${newРоль}?`, () => doChangeРоль(userId, newРоль));
         }
 
-        async function doChangeRole(userId, newRole) {
+        async function doChangeРоль(userId, newРоль) {
             try {
                 const response = await fetch(`/api/v1/telegram-users/${userId}/role`, {
                     method: 'PUT',
@@ -702,18 +702,18 @@
                         'Content-Type': 'application/json',
                         'Authorization': getAuthHeader()
                     },
-                    body: JSON.stringify({ role: newRole })
+                    body: JSON.stringify({ role: newРоль })
                 });
 
                 // Проверяем что ответ JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
-                    throw new Error('Сервер вернул не JSON: ' + text.substring(0, 100));
+                    throw new Ошибка('Сервер вернул не JSON: ' + text.substring(0, 100));
                 }
 
                 if (response.ok) {
-                    showToast('Успешно', `Роль изменена на ${newRole}`, 'success');
+                    showToast('Успешно', `Роль изменена на ${newРоль}`, 'success');
                     loadTelegramUsers();
                 } else {
                     const err = await response.json();

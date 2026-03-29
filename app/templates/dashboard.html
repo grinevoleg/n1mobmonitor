@@ -285,13 +285,13 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Статус</th>
-                        <th>Иконка</th>
-                        <th>Идентификатор</th>
-                        <th>Название</th>
-                        <th>Версия</th>
-                        <th>Последняя проверка</th>
-                        <th>Ошибка</th>
+                        <th>Status</th>
+                        <th>Icon</th>
+                        <th>Name</th>
+                        <th>Bundle ID</th>
+                        <th>Version</th>
+                        <th>Last Check</th>
+                        <th>Error</th>
                     </tr>
                 </thead>
                 <tbody id="apps-body">
@@ -395,7 +395,7 @@
         // Автообновление каждые 60 секунд
         setInterval(updateDashboard, 60000);
 
-        // Копирование Bundle ID по клику
+        // Копирование Идентификатор по клику
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('bundle-id')) {
                 const fullId = e.target.getAttribute('data-full');
