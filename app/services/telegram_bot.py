@@ -460,7 +460,7 @@ class TelegramBotService:
 
             help_text += f"\n_Веб-интерфейс: http://localhost:8000_"
 
-            await update.message.reply_text(help_text, parse_mode='Markdown')
+            await update.message.reply_text(help_text)
         finally:
             db.close()
     
