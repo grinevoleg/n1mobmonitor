@@ -662,15 +662,22 @@
                     body: JSON.stringify({ role: newRole })
                 });
 
+                // Проверяем что ответ JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error('Сервер вернул не JSON: ' + text.substring(0, 100));
+                }
+
                 if (response.ok) {
                     showToast('Успешно', `Роль изменена на ${newRole}`, 'success');
                     loadTelegramUsers();
                 } else {
                     const err = await response.json();
-                    showToast('Ошибка', err.detail, 'error');
+                    showToast('Ошибка', err.detail || 'Ошибка сервера', 'error');
                 }
             } catch (error) {
-                showToast('Ошибка', error.message, 'error');
+                showToast('Ошибка', error.message || 'Неизвестная ошибка', 'error');
             }
         }
 
