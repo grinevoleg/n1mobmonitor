@@ -17,13 +17,29 @@ def migrate_database():
     
     db = SessionLocal()
     try:
-        # Проверка существует ли таблица
         inspector = inspect(engine)
+        
+        # Миграция для apps (icon_url, description)
+        if "apps" in inspector.get_table_names():
+            apps_columns = {col['name']: col for col in inspector.get_columns("apps")}
+            
+            if "icon_url" not in apps_columns:
+                logger.info("Adding icon_url column to apps table...")
+                db.execute(text("ALTER TABLE apps ADD COLUMN icon_url TEXT"))
+                db.commit()
+                logger.info("✅ icon_url column added")
+            
+            if "description" not in apps_columns:
+                logger.info("Adding description column to apps table...")
+                db.execute(text("ALTER TABLE apps ADD COLUMN description TEXT"))
+                db.commit()
+                logger.info("✅ description column added")
+        
+        # Миграция для telegram_users
         if "telegram_users" not in inspector.get_table_names():
-            logger.info("Table telegram_users does not exist yet, skipping migration")
+            logger.info("Table telegram_users does not exist yet")
             return True
         
-        # Проверка типа колонки role
         columns = {col['name']: col for col in inspector.get_columns("telegram_users")}
         
         if "role" not in columns:
