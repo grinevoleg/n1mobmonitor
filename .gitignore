@@ -48,3 +48,6 @@ htmlcov/
 __pycache__/
 *.pyc
 .qwen/
+
+# Version file
+VERSION

@@ -6,6 +6,9 @@ from typing import Optional
 class Settings(BaseSettings):
     """Настройки приложения"""
     
+    # App version
+    app_version: str = "1.0.0"
+    
     # Database
     database_url: str = "sqlite:///./app_store_monitor.db"
     
@@ -42,4 +45,13 @@ class Settings(BaseSettings):
         extra = 'ignore'  # Игнорировать лишние поля
 
 
+# Чтение версии из файла VERSION
+try:
+    with open('VERSION', 'r') as f:
+        version_from_file = f.read().strip()
+except:
+    version_from_file = "1.0.0"
+
 settings = Settings()
+if settings.app_version == "1.0.0":  # default value
+    settings.app_version = version_from_file

@@ -53,6 +53,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     unavailable = sum(1 for app in apps if app.last_status == "unavailable")
     error = sum(1 for app in apps if app.last_status == "error")
 
+    from app.config import settings
+    
     return templates.TemplateResponse(
         "dashboard.html",
         {
@@ -64,6 +66,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "error": error,
             "get_status_icon": get_status_icon,
             "get_status_display": get_status_display,
+            "version": settings.app_version,
         }
     )
 
