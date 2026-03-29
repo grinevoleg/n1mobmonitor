@@ -629,6 +629,9 @@
                 
                 // Обновление таблицы
                 const tbody = document.getElementById('apps-body');
+                // Сохраняем данные для кликов
+                window.appData = data.apps;
+                
                 if (tbody && data.apps.length > 0) {
                     tbody.innerHTML = data.apps.map((app, i) => `
                         <tr data-app-id="${app.id}">
