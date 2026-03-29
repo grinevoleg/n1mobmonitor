@@ -51,6 +51,7 @@ class TelegramBotService:
         
         # Обработчик callback query (для кнопок настроек)
         self.application.add_handler(CallbackQueryHandler(self.callback_settings))
+        self.application.add_handler(CallbackQueryHandler(self.callback_users, pattern="^(approve_|reject_|role_)"))
         
         # Запуск polling с созданием event loop
         import asyncio
@@ -298,6 +299,93 @@ class TelegramBotService:
             
         finally:
             db.close()
+
+    async def callback_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик кнопок управления пользователями"""
+        query = update.callback_query
+        await query.answer()
+        
+        telegram_id = str(update.effective_user.id)
+        data = query.data  # approve_X, reject_X, role_admin_X, role_dev_X, role_mgr_X
+        
+        db = self._get_db()
+        try:
+            # Проверяем что это админ
+            admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
+            if not admin or admin.role != "admin" or admin.status != "approved":
+                await query.edit_message_text("❌ Недостаточно прав")
+                return
+            
+            # Парсим данные
+            parts = data.split("_")
+            action = parts[0]  # approve, reject, role
+            target_id = int(parts[-1])  # ID пользователя
+            
+            user = db.query(TelegramUser).filter(TelegramUser.id == target_id).first()
+            if not user:
+                await query.edit_message_text("❌ Пользователь не найден")
+                return
+            
+            if action == "approve":
+                user.status = "approved"
+                user.updated_at = datetime.utcnow()
+                db.commit()
+                
+                # Уведомляем пользователя
+                try:
+                    await context.bot.send_message(
+                        chat_id=user.telegram_id,
+                        text=f"✅ *Ваша заявка одобрена!*\n\nРоль: *{user.role}*\n\nИспользуйте /help для списка команд.",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+                
+                await query.edit_message_text(f"✅ Пользователь {user.id} одобрен!")
+                
+            elif action == "reject":
+                user.status = "rejected"
+                user.updated_at = datetime.utcnow()
+                db.commit()
+                
+                # Уведомляем пользователя
+                try:
+                    await context.bot.send_message(
+                        chat_id=user.telegram_id,
+                        text="❌ *Ваша заявка отклонена*\n\nОбратитесь к администратору.",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+                
+                await query.edit_message_text(f"❌ Пользователь {user.id} отклонен!")
+                
+            elif action == "role":
+                new_role = parts[1]  # admin, dev, mgr
+                role_map = {"admin": "admin", "dev": "developer", "mgr": "manager"}
+                user.role = role_map.get(new_role, "manager")
+                user.updated_at = datetime.utcnow()
+                db.commit()
+                
+                role_name = {"admin": "👑 Admin", "dev": "💻 Developer", "mgr": "👤 Manager"}[new_role]
+                
+                # Уведомляем пользователя
+                try:
+                    await context.bot.send_message(
+                        chat_id=user.telegram_id,
+                        text=f"🔔 *Ваша роль изменена!*\n\nНовая роль: *{user.role}*",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+                
+                await query.edit_message_text(f"🔧 Роль пользователя {user.id} изменена на {role_name}")
+            
+            # Обновляем список пользователей
+            await self.cmd_users(update, context)
+            
+        finally:
+            db.close()
     
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /status - проверка статуса"""
@@ -436,15 +524,43 @@ class TelegramBotService:
             
             users = db.query(TelegramUser).order_by(TelegramUser.created_at.desc()).limit(20).all()
             
+            if not users:
+                await update.message.reply_text("👥 Нет пользователей")
+                return
+            
+            # Формируем сообщение и клавиатуру
             message = "👥 *Пользователи (последние 20)*\n\n"
+            keyboard = []
+            
             for u in users:
                 status_emoji = {"pending": "⏳", "approved": "✅", "rejected": "❌"}.get(u.status, "❓")
                 role_emoji = {"admin": "👑", "developer": "💻", "manager": "👤"}.get(u.role, "❓")
+                
                 message += f"{status_emoji} {role_emoji} `{u.id}` - @{u.username or 'N/A'} - {u.full_name or 'Без имени'}\n"
+                
+                # Кнопки управления для pending пользователей
+                if u.status == "pending":
+                    keyboard.append([
+                        InlineKeyboardButton(f"✅ {u.id}", callback_data=f"approve_{u.id}"),
+                        InlineKeyboardButton(f"❌ {u.id}", callback_data=f"reject_{u.id}")
+                    ])
+                else:
+                    # Кнопки смены роли
+                    keyboard.append([
+                        InlineKeyboardButton(f"👑 {u.id}", callback_data=f"role_admin_{u.id}"),
+                        InlineKeyboardButton(f"💻 {u.id}", callback_data=f"role_dev_{u.id}"),
+                        InlineKeyboardButton(f"👤 {u.id}", callback_data=f"role_mgr_{u.id}")
+                    ])
             
-            message += "\nИспользуйте `/approve <id>`, `/reject <id>`, `/setrole <id> <role>`"
+            message += "\n*Действия:*\n"
+            message += "👑 - Admin | 💻 - Developer | 👤 - Manager\n"
+            message += "✅ - Одобрить | ❌ - Отклонить"
             
-            await update.message.reply_text(message, parse_mode='Markdown')
+            await update.message.reply_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
         finally:
             db.close()
     
