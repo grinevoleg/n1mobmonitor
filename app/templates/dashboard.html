@@ -729,7 +729,7 @@
                         'status_change': '🔴'
                     }[item.alert_type] || '⚪';
                     
-                    const date = new Date(item.checked_at).toLocaleString();
+                    const date = new Date(item.checked_at).toLocaleDateString() + ' ' + new Date(item.checked_at).toLocaleTimeString();
                     
                     return `
                         <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
