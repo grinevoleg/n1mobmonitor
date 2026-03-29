@@ -38,18 +38,16 @@ class TelegramBotService:
         self.application.add_handler(CommandHandler("help", self.cmd_help))
         self.application.add_handler(CommandHandler("notifications", self.cmd_notifications))
         
-        # Обработчики текстовых команд из меню
-        self.application.add_handler(CommandHandler("статус", self.cmd_status))
-        self.application.add_handler(CommandHandler("настройки", self.cmd_notifications))
-        self.application.add_handler(CommandHandler("справка", self.cmd_help))
-        self.application.add_handler(CommandHandler("пользователи", self.cmd_users))
-        
         # Admin команды
         self.application.add_handler(CommandHandler("users", self.cmd_users))
         self.application.add_handler(CommandHandler("approve", self.cmd_approve))
         self.application.add_handler(CommandHandler("reject", self.cmd_reject))
         self.application.add_handler(CommandHandler("setrole", self.cmd_setrole))
         self.application.add_handler(CommandHandler("stats", self.cmd_stats))
+        
+        # Обработчик текстовых сообщений (для кнопок меню)
+        from telegram.ext import MessageHandler, filters
+        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_menu_buttons))
         
         # Запуск polling с созданием event loop
         import asyncio
@@ -218,6 +216,19 @@ class TelegramBotService:
 
         finally:
             db.close()
+    
+    async def handle_menu_buttons(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик кнопок меню"""
+        text = update.message.text
+        
+        if text == "📊 Статус":
+            await self.cmd_status(update, context)
+        elif text == "⚙️ Настройки":
+            await self.cmd_notifications(update, context)
+        elif text == "📚 Справка":
+            await self.cmd_help(update, context)
+        elif text == "👥 Пользователи":
+            await self.cmd_users(update, context)
     
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /status - проверка статуса"""
