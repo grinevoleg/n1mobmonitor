@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime
 
 from app.database import get_db
 from app.models import TelegramUser, UserNotificationSettings
@@ -59,7 +60,7 @@ def update_user_role(
             raise HTTPException(status_code=400, detail="Неверная роль")
         user.role = update_data.role
 
-    user.updated_at = db.func.now()
+    user.updated_at = datetime.utcnow()
     db.commit()
     
     # Возвращаем обновлённого пользователя
@@ -78,7 +79,7 @@ def approve_user(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     user.status = "approved"
-    user.updated_at = db.func.now()
+    user.updated_at = datetime.utcnow()
     db.commit()
     
     return db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
@@ -96,7 +97,7 @@ def reject_user(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     user.status = "rejected"
-    user.updated_at = db.func.now()
+    user.updated_at = datetime.utcnow()
     db.commit()
     
     return db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
