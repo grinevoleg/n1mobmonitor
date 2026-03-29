@@ -29,6 +29,8 @@ class App(Base):
     app_id = Column(String, unique=True, index=True, nullable=True)  # Apple ID (trackId)
     name = Column(String, nullable=True)
     version = Column(String, nullable=True)
+    icon_url = Column(String, nullable=True)  # App Store icon URL
+    description = Column(Text, nullable=True)  # App description
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

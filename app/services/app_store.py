@@ -123,6 +123,8 @@ class AppStoreClient:
                     "status": "available",
                     "name": app_data.get("trackName"),
                     "version": app_data.get("version"),
+                    "icon_url": app_data.get("artworkUrl512"),  # 512x512 icon
+                    "description": app_data.get("description"),
                     "bundle_id": app_data.get("bundleId"),
                     "app_id": app_data.get("trackId"),
                     "price": app_data.get("price", 0),
@@ -172,6 +174,8 @@ class AppStoreClient:
                     "status": "available",
                     "name": app_data.get("trackName"),
                     "version": app_data.get("version"),
+                    "icon_url": app_data.get("artworkUrl512"),  # 512x512 icon
+                    "description": app_data.get("description"),
                     "bundle_id": app_data.get("bundleId"),
                     "app_id": app_data.get("trackId"),
                     "price": app_data.get("price", 0),

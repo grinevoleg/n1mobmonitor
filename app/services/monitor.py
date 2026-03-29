@@ -150,6 +150,8 @@ class MonitorService:
             if result["status"] == "available":
                 app.name = result["name"]
                 app.version = result["version"]
+                app.icon_url = result.get("icon_url")
+                app.description = result.get("description")
                 # Обновляем bundle_id если он не был указан и не существует в другой записи
                 if not app.bundle_id and result.get("bundle_id"):
                     existing = db.query(App).filter(

@@ -30,6 +30,8 @@ class AppResponse(BaseModel):
     app_id: Optional[str] = None
     name: Optional[str] = None
     version: Optional[str] = None
+    icon_url: Optional[str] = None  # App icon URL
+    description: Optional[str] = None  # App description
     is_active: bool
     created_at: datetime
     updated_at: datetime

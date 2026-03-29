@@ -253,6 +253,7 @@
                 <thead>
                     <tr>
                         <th>Статус</th>
+                        <th>Иконка</th>
                         <th>Идентификатор</th>
                         <th>Название</th>
                         <th>Версия</th>
@@ -323,6 +324,7 @@
                                     <span>${app.status_display}</span>
                                 </div>
                             </td>
+                            <td>${app.icon_url ? `<img src="${app.icon_url}" alt="" style="width:32px;height:32px;border-radius:6px;">` : '—'}</td>
                             <td><span class="bundle-id">${app.identifier || app.bundle_id || '—'}</span></td>
                             <td>${app.name || '—'}</td>
                             <td><span class="version">${app.version || '—'}</span></td>
