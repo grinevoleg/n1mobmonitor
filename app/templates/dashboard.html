@@ -639,7 +639,7 @@
                                 </div>
                             </td>
                             <td>${app.icon_url ? `<img src="${app.icon_url}" alt="" style="width:32px;height:32px;border-radius:6px;" crossorigin="anonymous">` : '—'}</td>
-                            <td><span style="cursor: pointer; color: #00d9ff;" onclick="showAppModal(app)">${app.name || '—'}</span></td>
+                            <td><span class="app-name" style="cursor: pointer; color: #00d9ff;" data-app='${JSON.stringify(app).replace(/'/g, "&apos;")}'>${app.name || '—'}</span></td>
                             <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="Click to copy">${(app.identifier || app.bundle_id || '—').substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
                             <td><span class="version">${app.version || '—'}</span></td>
                             <td>
@@ -770,6 +770,18 @@
         });
         
 
+        // Click handler for app name - open modal
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('app-name')) {
+                try {
+                    const appData = JSON.parse(e.target.getAttribute('data-app').replace(/&apos;/g, "'"));
+                    showAppModal(appData);
+                } catch (err) {
+                    console.error('Failed to parse app data:', err);
+                }
+            }
+        });
+        
         // Click handler for bundle-id copy
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('bundle-id')) {
