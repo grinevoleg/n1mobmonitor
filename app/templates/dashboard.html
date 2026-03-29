@@ -700,7 +700,11 @@
                 });
                 
                 if (!response.ok) {
-                    historyList.innerHTML = '<div class="empty-state">No history available</div>';
+                    if (response.status === 401) {
+                        historyList.innerHTML = '<div class="empty-state">Please log in to view history</div>';
+                    } else {
+                        historyList.innerHTML = '<div class="empty-state">No history available</div>';
+                    }
                     historyCount.textContent = '';
                     return;
                 }
@@ -740,6 +744,7 @@
                 }).join('');
                 
             } catch (error) {
+                console.error('Failed to load history:', error);
                 historyList.innerHTML = '<div class="empty-state">Failed to load history</div>';
                 historyCount.textContent = '';
             }
