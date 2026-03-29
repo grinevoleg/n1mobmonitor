@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Галактическая Империя</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Верхняя панель -->
+        <header id="game-header">
+            <div class="resource-bar">
+                <div class="resource" id="fuel">
+                    <span class="icon">⛽</span>
+                    <span class="value">100</span>
+                </div>
+                <div class="resource" id="minerals">
+                    <span class="icon">🪨</span>
+                    <span class="value">0</span>
+                </div>
+                <div class="resource" id="crystals">
+                    <span class="icon">💎</span>
+                    <span class="value">0</span>
+                </div>
+                <div class="resource" id="energy">
+                    <span class="icon">⚡</span>
+                    <span class="value">50</span>
+                </div>
+                <div class="resource" id="credits">
+                    <span class="icon">💰</span>
+                    <span class="value">500</span>
+                </div>
+            </div>
+            <div class="player-info">
+                <span id="player-name">Командир</span>
+                <span id="empire-level">Уровень 1</span>
+            </div>
+        </header>
+
+        <!-- Основное игровое поле -->
+        <main id="game-main">
+            <!-- Левая панель - корабль -->
+            <aside id="ship-panel">
+                <h3>🚀 Ваш Корабль</h3>
+                <img src="https://image.pollinations.ai/prompt/Small%20futuristic%20spaceship%20for%20space%20exploration%20game%20sleek%20design%20blue%20engine%20glow" alt="Корабль" class="ship-image">
+                <div class="ship-stats">
+                    <div class="stat">
+                        <label>Топливо:</label>
+                        <div class="progress-bar">
+                            <div class="progress" id="fuel-bar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <label>Энергия:</label>
+                        <div class="progress-bar">
+                            <div class="progress" id="energy-bar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <label>Груз:</label>
+                        <span id="cargo">0/100</span>
+                    </div>
+                </div>
+                <div class="ship-actions">
+                    <button id="btn-refuel" class="action-btn">Заправиться (50💰)</button>
+                    <button id="btn-repair" class="action-btn">Ремонт (100💰)</button>
+                </div>
+            </aside>
+
+            <!-- Центральная панель - галактическая карта -->
+            <section id="galaxy-map">
+                <h3>🌌 Галактическая Карта</h3>
+                <div id="map-container">
+                    <canvas id="galaxy-canvas" width="800" height="600"></canvas>
+                </div>
+                <div id="system-info" class="info-panel">
+                    <h4 id="system-name">Выберите систему</h4>
+                    <p id="system-type">Тип: -</p>
+                    <p id="system-resources">Ресурсы: -</p>
+                    <p id="system-distance">Расстояние: -</p>
+                    <button id="btn-travel" class="action-btn" disabled>Путешествовать</button>
+                </div>
+            </section>
+
+            <!-- Правая панель - действия -->
+            <aside id="actions-panel">
+                <h3>⚙️ Действия</h3>
+                
+                <div class="action-section">
+                    <h4>🏭 Производство</h4>
+                    <button id="btn-build-mine" class="action-btn">Шахта (200💰)</button>
+                    <button id="btn-build-factory" class="action-btn">Завод (500💰)</button>
+                    <button id="btn-build-station" class="action-btn">Станция (1000💰)</button>
+                </div>
+
+                <div class="action-section">
+                    <h4>💱 Торговля</h4>
+                    <div class="trade-controls">
+                        <select id="trade-resource">
+                            <option value="minerals">🪨 Минералы</option>
+                            <option value="crystals">💎 Кристаллы</option>
+                            <option value="energy">⚡ Энергия</option>
+                        </select>
+                        <button id="btn-sell" class="action-btn">Продать</button>
+                        <button id="btn-buy" class="action-btn">Купить</button>
+                    </div>
+                </div>
+
+                <div class="action-section">
+                    <h4>📊 Статистика</h4>
+                    <div id="stats-display">
+                        <p>Систем: <span id="stat-systems">1</span></p>
+                        <p>Заводов: <span id="stat-factories">0</span></p>
+                        <p>Дней: <span id="stat-days">1</span></p>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Нижняя панель - сообщения -->
+        <footer id="game-footer">
+            <div id="message-log">
+                <p class="message"> Добро пожаловать в Галактическую Империю!</p>
+            </div>
+        </footer>
+
+        <!-- Модальные окна -->
+        <div id="modal-overlay" class="modal-overlay hidden">
+            <div id="modal-content" class="modal-content">
+                <h3 id="modal-title">Заголовок</h3>
+                <p id="modal-message">Сообщение</p>
+                <button id="modal-close" class="action-btn">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

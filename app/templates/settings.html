@@ -598,14 +598,16 @@
         // Одобрить пользователя
         async function approveUser(userId) {
             if (!checkAuth()) return;
-            if (!confirm('Одобрить этого пользователя?')) return;
-            
+            showModal('Одобрить пользователя', 'Вы уверены что хотите одобрить этого пользователя?', () => doApproveUser(userId));
+        }
+
+        async function doApproveUser(userId) {
             try {
-                const response = await fetch(`/api/v1/telegram-users/${userId}/approve?approver_telegram_id=web`, {
+                const response = await fetch(`/api/v1/telegram-users/${userId}/approve`, {
                     method: 'POST',
                     headers: { 'Authorization': getAuthHeader() }
                 });
-                
+
                 if (response.ok) {
                     showToast('Успешно', 'Пользователь одобрен', 'success');
                     loadTelegramUsers();
@@ -621,14 +623,16 @@
         // Отклонить пользователя
         async function rejectUser(userId) {
             if (!checkAuth()) return;
-            if (!confirm('Отклонить этого пользователя?')) return;
-            
+            showModal('Отклонить пользователя', 'Вы уверены что хотите отклонить этого пользователя?', () => doRejectUser(userId));
+        }
+
+        async function doRejectUser(userId) {
             try {
                 const response = await fetch(`/api/v1/telegram-users/${userId}/reject`, {
                     method: 'POST',
                     headers: { 'Authorization': getAuthHeader() }
                 });
-                
+
                 if (response.ok) {
                     showToast('Успешно', 'Пользователь отклонен', 'success');
                     loadTelegramUsers();
@@ -644,8 +648,10 @@
         // Изменить роль
         async function changeRole(userId, newRole) {
             if (!checkAuth()) return;
-            if (!confirm(`Изменить роль на ${newRole}?`)) return;
-            
+            showModal('Изменить роль', `Изменить роль на ${newRole}?`, () => doChangeRole(userId, newRole));
+        }
+
+        async function doChangeRole(userId, newRole) {
             try {
                 const response = await fetch(`/api/v1/telegram-users/${userId}/role`, {
                     method: 'PUT',
@@ -655,7 +661,7 @@
                     },
                     body: JSON.stringify({ role: newRole })
                 });
-                
+
                 if (response.ok) {
                     showToast('Успешно', `Роль изменена на ${newRole}`, 'success');
                     loadTelegramUsers();
