@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database import get_db
-from app.models import TelegramUser, UserNotificationSettings, UserRole, UserStatus
+from app.models import TelegramUser, UserNotificationSettings
 from app.schemas import TelegramUserResponse, TelegramUserUpdate, UserNotificationSettingsResponse, UserNotificationSettingsUpdate
 from app.api.deps import get_api_key, get_admin_user
 
@@ -47,7 +47,7 @@ def update_user_role(
     user_id: int,
     update_data: TelegramUserUpdate,
     db: Session = Depends(get_db),
-    _=Depends(get_admin_user)
+    admin_user=Depends(get_admin_user)
 ):
     """Изменить роль пользователя (admin only)"""
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
@@ -57,7 +57,7 @@ def update_user_role(
     if update_data.role:
         if update_data.role not in ["admin", "developer", "manager"]:
             raise HTTPException(status_code=400, detail="Неверная роль")
-        user.role = UserRole(update_data.role)
+        user.role = update_data.role
     
     user.updated_at = db.func.now()
     db.commit()
@@ -69,25 +69,19 @@ def update_user_role(
 @router.post("/{user_id}/approve", response_model=TelegramUserResponse)
 def approve_user(
     user_id: int,
-    approver_telegram_id: str,
     db: Session = Depends(get_db),
-    _=Depends(get_admin_user)
+    admin_user=Depends(get_admin_user)
 ):
     """Одобрить пользователя (admin only)"""
-    approver = db.query(TelegramUser).filter(TelegramUser.telegram_id == approver_telegram_id).first()
-    if not approver or approver.role != UserRole.admin:
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
-    
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    user.status = UserStatus.approved
-    user.approved_by = approver.id
+
+    user.status = "approved"
     user.updated_at = db.func.now()
     db.commit()
     db.refresh(user)
-    
+
     return user
 
 
@@ -95,18 +89,18 @@ def approve_user(
 def reject_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_admin_user)
+    admin_user=Depends(get_admin_user)
 ):
     """Отклонить пользователя (admin only)"""
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-    user.status = UserStatus.rejected
+
+    user.status = "rejected"
     user.updated_at = db.func.now()
     db.commit()
     db.refresh(user)
-    
+
     return user
 
 
