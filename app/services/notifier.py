@@ -176,28 +176,38 @@ async def send_telegram_alert(
     new_value: Optional[str] = None
 ) -> bool:
     """
-    Отправка Telegram уведомления об алерте
-    
-    Args:
-        alert_type: тип алерта
-        app_name: название приложения
-        app_identifier: bundle_id или app_id
-        old_value: старое значение
-        new_value: новое значение
-        
-    Returns:
-        True если успешно
+    УСТАРЕЛА: Используется только для тестирования!
+    Отправка Telegram уведомления (тестовое)
     """
     db = SessionLocal()
     try:
         settings_dict = get_all_settings(db)
-        
+
         if settings_dict.get("telegram_enabled", "false").lower() != "true":
             logger.debug("Telegram уведомления отключены")
             return False
-        
+
         bot_token = settings_dict.get("telegram_bot_token", "")
-        chat_id = settings_dict.get("telegram_chat_id", "")
+        
+        # Получаем первого одобренного пользователя для теста
+        test_user = db.query(TelegramUser).filter(
+            TelegramUser.status == "approved"
+        ).first()
+        
+        if not test_user:
+            logger.warning("Нет одобренных пользователей для тестового уведомления")
+            return False
+        
+        # Используем новую функцию для отправки
+        return await send_telegram_alert_to_user(
+            test_user, alert_type, app_name, app_identifier, old_value, new_value
+        )
+        
+    except Exception as e:
+        logger.error(f"Ошибка отправки Telegram: {e}")
+        return False
+    finally:
+        db.close()
         
         if not all([bot_token, chat_id]):
             logger.warning("Не все Telegram настройки заполнены")
