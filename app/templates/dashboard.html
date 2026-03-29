@@ -500,6 +500,121 @@
             return auth ? `Basic ${auth}` : null;
         }
         
+        // App Modal Functions
+        function showAppModal(app) {
+            const modal = document.getElementById('app-modal');
+            
+            // Icon
+            const iconEl = document.getElementById('modal-icon');
+            if (app.icon_url) {
+                iconEl.src = app.icon_url;
+                iconEl.style.display = 'block';
+            } else {
+                iconEl.style.display = 'none';
+            }
+            
+            // Name
+            document.getElementById('modal-name').textContent = app.name || 'Unknown';
+            
+            // Meta badges
+            const metaEl = document.getElementById('modal-meta');
+            metaEl.innerHTML = `
+                <span class="modal-badge">${app.status_icon || ''} ${app.status_display || app.last_status || 'Unknown'}</span>
+                <span class="modal-badge">v${app.version || '?'}</span>
+            `;
+            
+            // Description
+            const descEl = document.getElementById('modal-description');
+            if (app.description) {
+                descEl.textContent = app.description;
+                descEl.style.display = 'block';
+            } else {
+                descEl.style.display = 'none';
+            }
+            
+            // Info rows
+            document.getElementById('modal-bundle-id').textContent = app.bundle_id || app.identifier || '—';
+            document.getElementById('modal-app-id').textContent = app.app_id || '—';
+            document.getElementById('modal-version').textContent = app.version || '—';
+            document.getElementById('modal-status').textContent = app.status_display || app.last_status || '—';
+            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString() : '—';
+            document.getElementById('modal-last-error').textContent = app.last_error || '—';
+            
+            // App Store Link
+            const appStoreLink = document.getElementById('modal-app-store-link');
+            if (app.app_id) {
+                appStoreLink.href = `https://apps.apple.com/app/id${app.app_id}`;
+                appStoreLink.parentElement.style.display = 'flex';
+            } else {
+                appStoreLink.parentElement.style.display = 'none';
+            }
+            
+            // Load history
+            loadAppHistory(app.id);
+            
+            modal.classList.add('active');
+        }
+
+                async function loadAppHistory(appId) {
+            const historyList = document.getElementById('history-list');
+            const historyCount = document.getElementById('history-count');
+            
+            try {
+                const response = await fetch(`/api/v1/apps/${appId}/history?limit=20`, {
+                    headers: { 'Authorization': getAuthHeader() }
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        historyList.innerHTML = '<div class="empty-state">Please log in to view history</div>';
+                    } else {
+                        historyList.innerHTML = '<div class="empty-state">No history available</div>';
+                    }
+                    historyCount.textContent = '';
+                    return;
+                }
+                
+                const history = await response.json();
+                
+                if (history.length === 0) {
+                    historyList.innerHTML = '<div class="empty-state">No history yet</div>';
+                    historyCount.textContent = '';
+                    return;
+                }
+                
+                historyCount.textContent = `(${history.length})`;
+                
+                historyList.innerHTML = history.map(item => {
+                    const statusEmoji = {
+                        'available': '🟢',
+                        'unavailable': '🔴',
+                        'error': '🟡',
+                        'app_added': '🆕',
+                        'version_change': '🔵',
+                        'status_change': '🔴'
+                    }[item.alert_type] || '⚪';
+                    
+                    const date = new Date(item.checked_at).toLocaleDateString() + ' ' + new Date(item.checked_at).toLocaleTimeString();
+                    
+                    return `
+                        <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                <span>${statusEmoji} <strong style="color: #fff;">${item.alert_type.replace('_', ' ')}</strong></span>
+                                <span style="color: #8892b0; font-size: 0.85rem;">${date}</span>
+                            </div>
+                            <div style="color: #a8b2d1; font-size: 0.9rem;">${item.message || 'No message'}</div>
+                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">Version: ${item.version}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                console.error('Failed to load history:', error);
+                historyList.innerHTML = '<div class="empty-state">Failed to load history</div>';
+                historyCount.textContent = '';
+            }
+        }
+
         async function updateDashboard() {
             try {
                 const response = await fetch('/api/v1/apps/statuses');
@@ -634,122 +749,7 @@
     </div>
     
 
-        // App Modal Functions
-        function showAppModal(app) {
-            const modal = document.getElementById('app-modal');
-            
-            // Icon
-            const iconEl = document.getElementById('modal-icon');
-            if (app.icon_url) {
-                iconEl.src = app.icon_url;
-                iconEl.style.display = 'block';
-            } else {
-                iconEl.style.display = 'none';
-            }
-            
-            // Name
-            document.getElementById('modal-name').textContent = app.name || 'Unknown';
-            
-            // Meta badges
-            const metaEl = document.getElementById('modal-meta');
-            metaEl.innerHTML = `
-                <span class="modal-badge">${app.status_icon || ''} ${app.status_display || app.last_status || 'Unknown'}</span>
-                <span class="modal-badge">v${app.version || '?'}</span>
-            `;
-            
-            // Description
-            const descEl = document.getElementById('modal-description');
-            if (app.description) {
-                descEl.textContent = app.description;
-                descEl.style.display = 'block';
-            } else {
-                descEl.style.display = 'none';
-            }
-            
-            // Info rows
-            document.getElementById('modal-bundle-id').textContent = app.bundle_id || app.identifier || '—';
-            document.getElementById('modal-app-id').textContent = app.app_id || '—';
-            document.getElementById('modal-version').textContent = app.version || '—';
-            document.getElementById('modal-status').textContent = app.status_display || app.last_status || '—';
-            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString() : '—';
-            document.getElementById('modal-last-error').textContent = app.last_error || '—';
-            
-            // App Store Link
-            const appStoreLink = document.getElementById('modal-app-store-link');
-            if (app.app_id) {
-                appStoreLink.href = `https://apps.apple.com/app/id${app.app_id}`;
-                appStoreLink.parentElement.style.display = 'flex';
-            } else {
-                appStoreLink.parentElement.style.display = 'none';
-            }
-            
-            // Load history
-            loadAppHistory(app.id);
-            
-            modal.classList.add('active');
-        }
-        
 
-        async function loadAppHistory(appId) {
-            const historyList = document.getElementById('history-list');
-            const historyCount = document.getElementById('history-count');
-            
-            try {
-                const response = await fetch(`/api/v1/apps/${appId}/history?limit=20`, {
-                    headers: { 'Authorization': getAuthHeader() }
-                });
-                
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        historyList.innerHTML = '<div class="empty-state">Please log in to view history</div>';
-                    } else {
-                        historyList.innerHTML = '<div class="empty-state">No history available</div>';
-                    }
-                    historyCount.textContent = '';
-                    return;
-                }
-                
-                const history = await response.json();
-                
-                if (history.length === 0) {
-                    historyList.innerHTML = '<div class="empty-state">No history yet</div>';
-                    historyCount.textContent = '';
-                    return;
-                }
-                
-                historyCount.textContent = `(${history.length})`;
-                
-                historyList.innerHTML = history.map(item => {
-                    const statusEmoji = {
-                        'available': '🟢',
-                        'unavailable': '🔴',
-                        'error': '🟡',
-                        'app_added': '🆕',
-                        'version_change': '🔵',
-                        'status_change': '🔴'
-                    }[item.alert_type] || '⚪';
-                    
-                    const date = new Date(item.checked_at).toLocaleDateString() + ' ' + new Date(item.checked_at).toLocaleTimeString();
-                    
-                    return `
-                        <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span>${statusEmoji} <strong style="color: #fff;">${item.alert_type.replace('_', ' ')}</strong></span>
-                                <span style="color: #8892b0; font-size: 0.85rem;">${date}</span>
-                            </div>
-                            <div style="color: #a8b2d1; font-size: 0.9rem;">${item.message || 'No message'}</div>
-                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">Version: ${item.version}</div>` : ''}
-                        </div>
-                    `;
-                }).join('');
-                
-            } catch (error) {
-                console.error('Failed to load history:', error);
-                historyList.innerHTML = '<div class="empty-state">Failed to load history</div>';
-                historyCount.textContent = '';
-            }
-        }
-        
         function closeAppModal() {
             document.getElementById('app-modal').classList.remove('active');
         }
