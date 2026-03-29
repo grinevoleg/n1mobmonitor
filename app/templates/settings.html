@@ -170,37 +170,15 @@
             <button class="btn btn-secondary" onclick="testEmail()">Тест</button>
         </div>
 
-        <!-- Telegram уведомления -->
-        <div class="settings-section">
-            <h2>✈️ Telegram уведомления</h2>
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 12px;">
-                    <label class="toggle">
-                        <input type="checkbox" id="telegram_enabled">
-                        <span class="slider"></span>
-                    </label>
-                    Включить Telegram уведомления
-                </label>
-            </div>
-            <div class="form-group">
-                <label>Bot Token</label>
-                <input type="text" id="telegram_bot_token" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-            </div>
-            <div class="form-group">
-                <label>Chat ID (устарело, используется для тестов)</label>
-                <input type="text" id="telegram_chat_id" placeholder="-1001234567890">
-            </div>
-            <button class="btn btn-primary" onclick="saveTelegramSettings()">Сохранить</button>
-            <button class="btn btn-secondary" onclick="testTelegram()">Тест</button>
-        </div>
-
         <!-- Telegram пользователи -->
         <div class="settings-section">
             <h2>👥 Пользователи Telegram</h2>
             <p style="color: #8892b0; margin-bottom: 16px; font-size: 0.9rem;">
-                Управление доступом пользователей к уведомлениям. Новые пользователи регистрируются через бота (@N1Appmon_bot).
+                Управление пользователями Telegram. Новые пользователи регистрируются через бота @N1Appmon_bot командой /start
             </p>
-            <button class="btn btn-secondary" onclick="loadTelegramUsers()" style="margin-bottom: 16px;">🔄 Обновить список</button>
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <button class="btn btn-secondary" onclick="loadTelegramUsers()">🔄 Обновить список</button>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -399,29 +377,6 @@
             }, 'Настройки Email сохранены');
         }
 
-        async function saveTelegramSettings() {
-            await saveSettings({
-                telegram_enabled: document.getElementById('telegram_enabled').checked.toString(),
-                telegram_bot_token: document.getElementById('telegram_bot_token').value,
-                telegram_chat_id: document.getElementById('telegram_chat_id').value
-            }, 'Настройки Telegram сохранены');
-        }
-
-        async function testEmail() {
-            if (!checkAuth()) return;
-            showToast('Отправка', 'Тестовое Email сообщение отправляется...', 'info');
-            const response = await fetch('/api/v1/settings/test-email', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
-            const result = await response.json();
-            showToast(response.ok ? 'Успешно' : 'Ошибка', result.message || result.detail, response.ok ? 'success' : 'error');
-        }
-
-        async function testTelegram() {
-            if (!checkAuth()) return;
-            showToast('Отправка', 'Тестовое Telegram сообщение отправляется...', 'info');
-            const response = await fetch('/api/v1/settings/test-telegram', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
-            const result = await response.json();
-            showToast(response.ok ? 'Успешно' : 'Ошибка', result.message || result.detail, response.ok ? 'success' : 'error');
-        }
 
         async function loadApps() {
             if (!checkAuth()) return;
