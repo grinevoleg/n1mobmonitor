@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models import Alert, App
 from app.schemas import AlertResponse, AlertStats
-from app.api.deps import get_api_key
+from app.api.deps import get_admin_user
 from app.services.alert_detector import get_alert_emoji
 
 router = APIRouter(prefix="/api/v1/alerts", tags=["Alerts"])
