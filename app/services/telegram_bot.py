@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from app.database import SessionLocal
 from app.models import TelegramUser, UserNotificationSettings
@@ -37,6 +37,12 @@ class TelegramBotService:
         self.application.add_handler(CommandHandler("status", self.cmd_status))
         self.application.add_handler(CommandHandler("help", self.cmd_help))
         self.application.add_handler(CommandHandler("notifications", self.cmd_notifications))
+        
+        # Обработчики текстовых команд из меню
+        self.application.add_handler(CommandHandler("статус", self.cmd_status))
+        self.application.add_handler(CommandHandler("настройки", self.cmd_notifications))
+        self.application.add_handler(CommandHandler("справка", self.cmd_help))
+        self.application.add_handler(CommandHandler("пользователи", self.cmd_users))
         
         # Admin команды
         self.application.add_handler(CommandHandler("users", self.cmd_users))
@@ -130,16 +136,25 @@ class TelegramBotService:
 
         user = self._get_or_create_user(telegram_id, username, full_name)
 
+        # Создаём меню в зависимости от статуса
         if user.status == "approved":
+            # Меню для авторизованных
+            if user.role == "admin":
+                keyboard = [["📊 Статус", "⚙️ Настройки"], ["👥 Пользователи", "📚 Справка"]]
+            elif user.role == "developer":
+                keyboard = [["📊 Статус", "⚙️ Настройки"], ["📚 Справка"]]
+            else:  # manager
+                keyboard = [["📊 Статус", "⚙️ Настройки"], ["📚 Справка"]]
+            
+            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            
             await update.message.reply_text(
                 f"✅ *Вы авторизованы!*\n\n"
                 f"👤 *Роль:* {user.role}\n"
                 f"🆔 *ID:* `{user.telegram_id}`\n\n"
-                f"📋 *Доступные команды:*\n"
-                f"/help - Список команд\n"
-                f"/status - Мой статус\n"
-                f"/notifications - Настройки",
-                parse_mode='Markdown'
+                f"Выберите команду из меню или используйте /help",
+                parse_mode='Markdown',
+                reply_markup=reply_markup
             )
         elif user.status == "rejected":
             await update.message.reply_text(
