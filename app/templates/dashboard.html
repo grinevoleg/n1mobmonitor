@@ -493,6 +493,13 @@
     
     <script>
         // Функция обновления данных
+
+        // Authorization
+        function getAuthHeader() {
+            const auth = localStorage.getItem('adminAuth');
+            return auth ? `Basic ${auth}` : null;
+        }
+        
         async function updateDashboard() {
             try {
                 const response = await fetch('/api/v1/apps/statuses');
