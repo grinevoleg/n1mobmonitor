@@ -438,8 +438,8 @@ class TelegramBotService:
             
             message = "👥 *Пользователи (последние 20)*\n\n"
             for u in users:
-                status_emoji = {"pending": "⏳", "approved": "✅", "rejected": "❌"}.get(u.status.value, "❓")
-                role_emoji = {"admin": "👑", "developer": "💻", "manager": "👤"}.get(u.role.value, "❓")
+                status_emoji = {"pending": "⏳", "approved": "✅", "rejected": "❌"}.get(u.status, "❓")
+                role_emoji = {"admin": "👑", "developer": "💻", "manager": "👤"}.get(u.role, "❓")
                 message += f"{status_emoji} {role_emoji} `{u.id}` - @{u.username or 'N/A'} - {u.full_name or 'Без имени'}\n"
             
             message += "\nИспользуйте `/approve <id>`, `/reject <id>`, `/setrole <id> <role>`"
@@ -480,7 +480,7 @@ class TelegramBotService:
             try:
                 await context.bot.send_message(
                     chat_id=user.telegram_id,
-                    text=f"✅ *Заявка одобрена!*\n\nРоль: *{user.role.value}*\n\nИспользуйте /help для списка команд.",
+                    text=f"✅ *Заявка одобрена!*\n\nРоль: *{user.role}*\n\nИспользуйте /help для списка команд.",
                     parse_mode='Markdown'
                 )
             except Exception as e:
