@@ -538,7 +538,7 @@
                 <tr>
                     <td><code style="background: rgba(0,217,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${key.key.substring(0, 20)}...</code></td>
                     <td>${key.description || '—'}</td>
-                    <td>${new Дата(key.created_at).toLocaleДатаString()}</td>
+                    <td>${new Date(key.created_at).toLocaleDateString()}</td>
                     <td><button class="action-btn btn-danger" onclick="confirmRevokeКлюч('${key.key}')">Отозвать</button></td>
                 </tr>
             `).join('') || '<tr><td colspan="4" class="empty-state">Нет ключей</td></tr>';
@@ -629,7 +629,7 @@
                                 </select>
                             </td>
                             <td>${statusEmoji} ${user.status}</td>
-                            <td>${new Дата(user.created_at).toLocaleДатаString('ru-RU')}</td>
+                            <td>${new Date(user.created_at).toLocaleDateString('ru-RU')}</td>
                             <td>
                                 ${user.status === 'pending' ? `
                                     <button class="action-btn" style="background: rgba(0,255,136,0.2); color: #00ff88;" onclick="approveUser(${user.id})">✓</button>
