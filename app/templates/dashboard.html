@@ -239,6 +239,149 @@
             pointer-events: none;
         }
 
+
+        /* App Info Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .app-modal {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+            position: relative;
+        }
+        
+        .modal-overlay.active .app-modal {
+            transform: scale(1);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: #8892b0;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .modal-close:hover {
+            color: #fff;
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .modal-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            flex-shrink: 0;
+        }
+        
+        .modal-title {
+            flex: 1;
+        }
+        
+        .modal-title h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .modal-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-badge {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #8892b0;
+        }
+        
+        .modal-description {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #a8b2d1;
+        }
+        
+        .modal-section {
+            margin-top: 20px;
+        }
+        
+        .modal-section h3 {
+            font-size: 0.9rem;
+            color: #8892b0;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .modal-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .modal-info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .modal-info-label {
+            color: #8892b0;
+        }
+        
+        .modal-info-value {
+            color: #fff;
+            font-family: monospace;
+        }
+        
+
         @media (max-width: 768px) {
             h1 { font-size: 1.8rem; }
             .stat-value { font-size: 2rem; }
@@ -359,7 +502,7 @@
                             </td>
                             <td>${app.icon_url ? `<img src="${app.icon_url}" alt="" style="width:32px;height:32px;border-radius:6px;">` : '—'}</td>
                             <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="Нажмите чтобы скопировать">${(app.identifier || app.bundle_id || '—').substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
-                            <td>${app.name || '—'}</td>
+                            <td><span style="cursor: pointer; color: #00d9ff;" onclick='showAppModal(${JSON.stringify(app)})'>${app.name || '—'}</span></td>
                             <td><span class="version">${app.version || '—'}</span></td>
                             <td>
                                 <span class="timestamp">
@@ -411,6 +554,111 @@
                         }, 1500);
                     });
                 }
+            }
+        });
+        
+
+    <!-- App Info Modal -->
+    <div class="modal-overlay" id="app-modal">
+        <div class="app-modal">
+            <button class="modal-close" onclick="closeAppModal()">×</button>
+            <div class="modal-header">
+                <img src="" alt="" class="modal-icon" id="modal-icon">
+                <div class="modal-title">
+                    <h2 id="modal-name">App Name</h2>
+                    <div class="modal-meta" id="modal-meta"></div>
+                </div>
+            </div>
+            <div class="modal-description" id="modal-description"></div>
+            <div class="modal-section">
+                <h3>App Information</h3>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">Bundle ID</span>
+                    <span class="modal-info-value" id="modal-bundle-id">—</span>
+                </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">Apple ID</span>
+                    <span class="modal-info-value" id="modal-app-id">—</span>
+                </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">Version</span>
+                    <span class="modal-info-value" id="modal-version">—</span>
+                </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">Status</span>
+                    <span class="modal-info-value" id="modal-status">—</span>
+                </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">Last Check</span>
+                    <span class="modal-info-value" id="modal-last-check">—</span>
+                </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">Last Error</span>
+                    <span class="modal-info-value" id="modal-last-error">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+        // App Modal Functions
+        function showAppModal(app) {
+            const modal = document.getElementById('app-modal');
+            
+            // Icon
+            const iconEl = document.getElementById('modal-icon');
+            if (app.icon_url) {
+                iconEl.src = app.icon_url;
+                iconEl.style.display = 'block';
+            } else {
+                iconEl.style.display = 'none';
+            }
+            
+            // Name
+            document.getElementById('modal-name').textContent = app.name || 'Unknown';
+            
+            // Meta badges
+            const metaEl = document.getElementById('modal-meta');
+            metaEl.innerHTML = `
+                <span class="modal-badge">${app.status_icon || ''} ${app.status_display || app.last_status || 'Unknown'}</span>
+                <span class="modal-badge">v${app.version || '?'}</span>
+            `;
+            
+            // Description
+            const descEl = document.getElementById('modal-description');
+            if (app.description) {
+                descEl.textContent = app.description;
+                descEl.style.display = 'block';
+            } else {
+                descEl.style.display = 'none';
+            }
+            
+            // Info rows
+            document.getElementById('modal-bundle-id').textContent = app.bundle_id || app.identifier || '—';
+            document.getElementById('modal-app-id').textContent = app.app_id || '—';
+            document.getElementById('modal-version').textContent = app.version || '—';
+            document.getElementById('modal-status').textContent = app.status_display || app.last_status || '—';
+            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString() : '—';
+            document.getElementById('modal-last-error').textContent = app.last_error || '—';
+            
+            modal.classList.add('active');
+        }
+        
+        function closeAppModal() {
+            document.getElementById('app-modal').classList.remove('active');
+        }
+        
+        // Close modal on overlay click
+        document.getElementById('app-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAppModal();
+            }
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeAppModal();
             }
         });
         
