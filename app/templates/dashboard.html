@@ -376,6 +376,14 @@
             color: #8892b0;
         }
         
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+        
         .modal-info-value {
             color: #fff;
             font-family: monospace;
@@ -473,6 +481,13 @@
         
         <div class="refresh-info">
             <p>Автообновление каждые <span>60 секунд</span> | Последнее обновление: <span id="last-update">—</span></p>
+
+            <div class="modal-section">
+                <h3>History <span id="history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
+                <div id="history-list" style="max-height: 300px; overflow-y: auto;">
+                    <div class="loader-container"><div class="loader"></div>Loading...</div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -596,6 +611,17 @@
                     <span class="modal-info-label">Last Error</span>
                     <span class="modal-info-value" id="modal-last-error">—</span>
                 </div>
+                <div class="modal-info-row">
+                    <span class="modal-info-label">App Store</span>
+                    <span class="modal-info-value"><a href="#" id="modal-app-store-link" target="_blank" style="color: #00d9ff; text-decoration: none;">Open →</a></span>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3>History <span id="history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
+                <div id="history-list" style="max-height: 300px; overflow-y: auto;">
+                    <div class="loader-container"><div class="loader"></div>Loading...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -641,7 +667,75 @@
             document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString() : '—';
             document.getElementById('modal-last-error').textContent = app.last_error || '—';
             
+            // App Store Link
+            const appStoreLink = document.getElementById('modal-app-store-link');
+            if (app.app_id) {
+                appStoreLink.href = `https://apps.apple.com/app/id${app.app_id}`;
+                appStoreLink.parentElement.style.display = 'flex';
+            } else {
+                appStoreLink.parentElement.style.display = 'none';
+            }
+            
+            // Load history
+            loadAppHistory(app.id);
+            
             modal.classList.add('active');
+        }
+        
+
+        async function loadAppHistory(appId) {
+            const historyList = document.getElementById('history-list');
+            const historyCount = document.getElementById('history-count');
+            
+            try {
+                const response = await fetch(`/api/v1/apps/${appId}/history?limit=20`, {
+                    headers: { 'Authorization': getAuthHeader() }
+                });
+                
+                if (!response.ok) {
+                    historyList.innerHTML = '<div class="empty-state">No history available</div>';
+                    historyCount.textContent = '';
+                    return;
+                }
+                
+                const history = await response.json();
+                
+                if (history.length === 0) {
+                    historyList.innerHTML = '<div class="empty-state">No history yet</div>';
+                    historyCount.textContent = '';
+                    return;
+                }
+                
+                historyCount.textContent = `(${history.length})`;
+                
+                historyList.innerHTML = history.map(item => {
+                    const statusEmoji = {
+                        'available': '🟢',
+                        'unavailable': '🔴',
+                        'error': '🟡',
+                        'app_added': '🆕',
+                        'version_change': '🔵',
+                        'status_change': '🔴'
+                    }[item.alert_type] || '⚪';
+                    
+                    const date = new Date(item.checked_at).toLocaleString();
+                    
+                    return `
+                        <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                <span>${statusEmoji} <strong style="color: #fff;">${item.alert_type.replace('_', ' ')}</strong></span>
+                                <span style="color: #8892b0; font-size: 0.85rem;">${date}</span>
+                            </div>
+                            <div style="color: #a8b2d1; font-size: 0.9rem;">${item.message || 'No message'}</div>
+                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">Version: ${item.version}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                historyList.innerHTML = '<div class="empty-state">Failed to load history</div>';
+                historyCount.textContent = '';
+            }
         }
         
         function closeAppModal() {
