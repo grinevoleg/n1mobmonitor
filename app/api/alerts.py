@@ -35,7 +35,7 @@ def get_alerts(
     unread_only: bool = False,
     alert_type: Optional[str] = None,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Получить список алертов с пагинацией"""
     query = db.query(Alert).order_by(Alert.created_at.desc())
@@ -53,7 +53,7 @@ def get_alerts(
 @router.get("/unread", response_model=List[AlertResponse])
 def get_unread_alerts(
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Получить непрочитанные алерты"""
     alerts = db.query(Alert).filter(Alert.is_read == False).order_by(Alert.created_at.desc()).all()
@@ -63,7 +63,7 @@ def get_unread_alerts(
 @router.get("/stats", response_model=AlertStats)
 def get_alert_stats(
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Получить статистику алертов"""
     total = db.query(Alert).count()
@@ -92,7 +92,7 @@ def get_alert_stats(
 def mark_as_read(
     alert_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Отметить алерт как прочитанный"""
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
@@ -107,7 +107,7 @@ def mark_as_read(
 @router.post("/read-all")
 def mark_all_as_read(
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Отметить все алерты как прочитанные"""
     db.query(Alert).filter(Alert.is_read == False).update({"is_read": True})
@@ -119,7 +119,7 @@ def mark_all_as_read(
 def delete_alert(
     alert_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_api_key)
+    _=Depends(get_admin_user)
 ):
     """Удалить алерт"""
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
