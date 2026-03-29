@@ -414,24 +414,24 @@
         <div class="stats">
             <div class="stat-card total">
                 <div class="stat-value" id="stat-total">{{ total }}</div>
-                <div class="stat-label">Всего приложений</div>
+                <div class="stat-label">Total Apps</div>
             </div>
             <div class="stat-card available">
                 <div class="stat-value" id="stat-available">{{ available }}</div>
-                <div class="stat-label">Доступно</div>
+                <div class="stat-label">Available</div>
             </div>
             <div class="stat-card unavailable">
                 <div class="stat-value" id="stat-unavailable">{{ unavailable }}</div>
-                <div class="stat-label">Недоступно</div>
+                <div class="stat-label">Unavailable</div>
             </div>
             <div class="stat-card error">
                 <div class="stat-value" id="stat-error">{{ error }}</div>
-                <div class="stat-label">Ошибки</div>
+                <div class="stat-label">Errors</div>
             </div>
         </div>
         
         <div class="apps-table">
-            <h2>Приложения</h2>
+            <h2>Applications</h2>
             {% if apps %}
             <table>
                 <thead>
@@ -459,7 +459,7 @@
                         <td><span class="version">{{ app.version or '—' }}</span></td>
                         <td>
                             <span class="timestamp">
-                                {{ app.last_check_at.strftime('%Y-%m-%d %H:%M') if app.last_check_at else 'Не проверено' }}
+                                {{ app.last_check_at.strftime('%Y-%m-%d %H:%M') if app.last_check_at else 'Not Checked' }}
                             </span>
                         </td>
                         <td>
@@ -473,14 +473,14 @@
             </table>
             {% else %}
             <div class="empty-state">
-                <p>📭 Нет приложений для мониторинга</p>
-                <p>Добавьте первое приложение через API</p>
+                <p>📭 No apps for monitoring</p>
+                <p>Add your first app via API</p>
             </div>
             {% endif %}
         </div>
         
         <div class="refresh-info">
-            <p>Автообновление каждые <span>60 секунд</span> | Последнее обновление: <span id="last-update">—</span></p>
+            <p>Auto-refresh every <span>60 seconds</span> | Last updated: <span id="last-update">—</span></p>
 
             <div class="modal-section">
                 <h3>History <span id="history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
@@ -649,7 +649,7 @@
                                         day: '2-digit',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                    }) : 'Не проверено'}
+                                    }) : 'Not Checked'}
                                 </span>
                             </td>
                             <td>
@@ -665,17 +665,17 @@
                 document.getElementById('last-update').textContent = new Date().toLocaleTimeString('ru-RU');
                 
             } catch (error) {
-                console.error('Ошибка обновления дашборда:', error);
+                console.error('Error обновления дашборда:', error);
             }
         }
         
-        // Первоначальное обновление через 1 секунду после загрузки
+        // Первоначальное обновление через 1 secondsу после загрузки
         setTimeout(updateDashboard, 1000);
         
-        // Автообновление каждые 60 секунд
+        // Auto-refresh every 60 seconds
         setInterval(updateDashboard, 60000);
 
-        // Копирование Идентификатор по клику
+        // Копирование Bundle ID по клику
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('bundle-id')) {
                 const fullId = e.target.getAttribute('data-full');
@@ -683,7 +683,7 @@
                     navigator.clipboard.writeText(fullId).then(() => {
                         // Показываем уведомление
                         const originalText = e.target.textContent;
-                        e.target.textContent = '✅ Скопировано!';
+                        e.target.textContent = '✅ Copied!';
                         e.target.style.background = 'rgba(0, 255, 136, 0.2)';
                         setTimeout(() => {
                             e.target.textContent = originalText;
