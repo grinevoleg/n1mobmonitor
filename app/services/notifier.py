@@ -25,7 +25,7 @@ def get_approved_users_for_alert(db: Session, alert_type: str) -> List[Tuple[Tel
         список кортежей (user, settings)
     """
     users = db.query(TelegramUser).filter(
-        TelegramUser.status == UserStatus.approved
+        TelegramUser.status == "approved"
     ).all()
     
     result = []
