@@ -127,36 +127,44 @@ class TelegramBotService:
         telegram_id = str(update.effective_user.id)
         username = update.effective_user.username
         full_name = update.effective_user.full_name
-        
+
         user = self._get_or_create_user(telegram_id, username, full_name)
-        
+
         if user.status == "approved":
             await update.message.reply_text(
-                f"✅ Вы уже авторизованы!\n\n"
-                f"Роль: *{user.role.value}*\n"
-                f"ID: `{user.telegram_id}`\n\n"
-                f"Используйте /help для списка команд.",
+                f"✅ *Вы авторизованы!*\n\n"
+                f"👤 *Роль:* {user.role}\n"
+                f"🆔 *ID:* `{user.telegram_id}`\n\n"
+                f"📋 *Доступные команды:*\n"
+                f"/help - Список команд\n"
+                f"/status - Мой статус\n"
+                f"/notifications - Настройки",
                 parse_mode='Markdown'
             )
         elif user.status == "rejected":
             await update.message.reply_text(
-                "❌ Ваша заявка была отклонена.\n"
-                "Обратитесь к администратору."
-            )
-        else:
-            # Отправка уведомления админам
-            await self._notify_admins(user, update)
-            
-            await update.message.reply_text(
-                f"👋 Здравствуйте, {user.full_name or 'пользователь'}!\n\n"
-                f"Ваша заявка на регистрацию отправлена.\n"
-                f"Ожидайте подтверждения от администратора.\n\n"
-                f"Ваш ID: `{user.telegram_id}`\n"
-                f"Статус: ⏳ {user.status.value}",
+                f"❌ *Заявка отклонена*\n\n"
+                f"Ваша заявка была отклонена администратором.\n"
+                f"Обратитесь к администратору для уточнения деталей.",
                 parse_mode='Markdown'
             )
-    
-    async def _notify_admins(self, user: TelegramUser, update: Update):
+        else:  # pending
+            # Отправка уведомления админам
+            await self._notify_admins(user, context)
+
+            await update.message.reply_text(
+                f"👋 *Здравствуйте, {full_name or 'пользователь'}!*\n\n"
+                f"✅ Ваша заявка принята!\n\n"
+                f"📋 *Что дальше:*\n"
+                f"1️⃣ Ожидайте подтверждения от администратора\n"
+                f"2️⃣ Обычно это занимает несколько минут\n"
+                f"3️⃣ Вы получите уведомление когда заявку одобрят\n\n"
+                f"🆔 *Ваш ID:* `{telegram_id}`\n"
+                f"⏳ *Статус:* {user.status}",
+                parse_mode='Markdown'
+            )
+
+    async def _notify_admins(self, user: TelegramUser, context: ContextTypes.DEFAULT_TYPE):
         """Уведомление админов о новой заявке"""
         db = self._get_db()
         try:
@@ -164,17 +172,22 @@ class TelegramBotService:
                 TelegramUser.role == "admin",
                 TelegramUser.status == "approved"
             ).all()
-            
+
+            if not admins:
+                logger.warning("Нет активных админов для уведомления")
+                return
+
             message = (
                 f"🔔 *Новая заявка!*\n\n"
-                f"Пользователь: {user.full_name or 'Не указано'}\n"
-                f"Username: @{user.username or 'Не указан'}\n"
-                f"ID: `{user.telegram_id}`\n\n"
-                f"Используйте:\n"
-                f"`/approve {user.id}` - одобрить\n"
-                f"`/reject {user.id}` - отклонить"
+                f"👤 *Пользователь:* {user.full_name or 'Не указано'}\n"
+                f"📧 *Username:* @{user.username or 'Не указан'}\n"
+                f"🆔 *ID:* `{user.telegram_id}`\n\n"
+                f"⚡ *Быстрые действия:*\n"
+                f"Используйте веб-интерфейс для управления:\n"
+                f"http://localhost:8000/settings"
             )
-            
+
+            notified_count = 0
             for admin in admins:
                 try:
                     await context.bot.send_message(
@@ -182,79 +195,88 @@ class TelegramBotService:
                         text=message,
                         parse_mode='Markdown'
                     )
+                    notified_count += 1
                 except Exception as e:
                     logger.error(f"Failed to notify admin {admin.telegram_id}: {e}")
+
+            logger.info(f"Notified {notified_count}/{len(admins)} admins about new user")
+
         finally:
             db.close()
     
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /status - проверка статуса"""
         telegram_id = str(update.effective_user.id)
-        
+
         db = self._get_db()
         try:
             user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
-            
+
             if not user:
                 await update.message.reply_text(
-                    "Вы не зарегистрированы.\nИспользуйте /start"
+                    "❌ Вы не зарегистрированы.\n\nИспользуйте /start для регистрации."
                 )
                 return
-            
-            status_emoji = {"pending": "⏳", "approved": "✅", "rejected": "❌"}.get(user.status.value, "❓")
-            
+
+            status_emoji = {"pending": "⏳", "approved": "✅", "rejected": "❌"}.get(user.status, "❓")
+            role_emoji = {"admin": "👑", "developer": "💻", "manager": "👤"}.get(user.role, "❓")
+
             await update.message.reply_text(
-                f"*Ваш статус:*\n\n"
-                f"Статус: {status_emoji} {user.status.value}\n"
-                f"Роль: {user.role.value}\n"
-                f"ID: `{user.telegram_id}`\n"
-                f"Зарегистрирован: {user.created_at.strftime('%Y-%m-%d %H:%M')}",
+                f"*📊 Ваш статус:*\n\n"
+                f"{status_emoji} *Статус:* {user.status}\n"
+                f"{role_emoji} *Роль:* {user.role}\n"
+                f"🆔 *ID:* `{user.telegram_id}`\n"
+                f"📅 *Зарегистрирован:* {user.created_at.strftime('%Y-%m-%d %H:%M')}\n\n"
+                f"Используйте /help для списка команд.",
                 parse_mode='Markdown'
             )
         finally:
             db.close()
-    
+
     async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /help - справка"""
         telegram_id = str(update.effective_user.id)
-        
+
         db = self._get_db()
         try:
             user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
-            
+
             if not user or user.status != "approved":
                 await update.message.reply_text(
-                    "📚 *Справка*\n\n"
-                    "/start - Регистрация\n"
-                    "/status - Проверка статуса\n"
-                    "/help - Эта справка\n\n"
-                    "Ожидайте подтверждения администратора.",
+                    f"📚 *Справка*\n\n"
+                    f"/start - Регистрация\n"
+                    f"/status - Проверка статуса\n"
+                    f"/help - Эта справка\n\n"
+                    f"⏳ Ожидайте подтверждения администратора.",
                     parse_mode='Markdown'
                 )
                 return
-            
+
             # Общие команды
-            help_text = "📚 *Справка*\n\n*Общие команды:*\n"
-            help_text += "/start - Регистрация\n"
-            help_text += "/status - Проверка статуса\n"
-            help_text += "/notifications - Настройка уведомлений\n"
-            help_text += "/help - Эта справка\n"
-            
+            help_text = f"📚 *Справка*\n\n"
+            help_text += f"*📋 Общие команды:*\n"
+            help_text += f"/start - Регистрация\n"
+            help_text += f"/status - Проверка статуса\n"
+            help_text += f"/notifications - Настройка уведомлений\n"
+            help_text += f"/help - Эта справка\n"
+
             # Команды для developer и admin
             if user.role in ["developer", "admin"]:
-                help_text += "\n*Для разработчиков:*\n"
-                help_text += "/addapp <bundle_id|app_id> - Добавить приложение\n"
-                help_text += "/checkapp <app_id> - Проверить приложение\n"
-            
+                help_text += f"\n*💻 Для разработчиков:*\n"
+                help_text += f"/addapp <bundle_id|app_id> - Добавить приложение\n"
+                help_text += f"/checkapp <app_id> - Проверить приложение\n"
+
             # Команды для admin
             if user.role == "admin":
-                help_text += "\n*Для администраторов:*\n"
-                help_text += "/users - Список пользователей\n"
-                help_text += "/approve <id> - Одобрить\n"
-                help_text += "/reject <id> - Отклонить\n"
-                help_text += "/setrole <id> <role> - Сменить роль\n"
-                help_text += "/stats - Статистика\n"
-            
+                help_text += f"\n*👑 Для администраторов:*\n"
+                help_text += f"/users - Список пользователей\n"
+                help_text += f"/approve <id> - Одобрить\n"
+                help_text += f"/reject <id> - Отклонить\n"
+                help_text += f"/setrole <id> <role> - Сменить роль\n"
+                help_text += f"/stats - Статистика\n"
+
+            help_text += f"\n_Веб-интерфейс: http://localhost:8000_"
+
             await update.message.reply_text(help_text, parse_mode='Markdown')
         finally:
             db.close()
