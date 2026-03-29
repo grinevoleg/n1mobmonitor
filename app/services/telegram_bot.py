@@ -51,7 +51,7 @@ class TelegramBotService:
         
         # Обработчик callback query (для кнопок настроек)
         self.application.add_handler(CallbackQueryHandler(self.callback_settings))
-        self.application.add_handler(CallbackQueryHandler(self.callback_users, pattern=r"^(approve|reject|role_admin|role_dev|role_mgr)_"))
+        self.application.add_handler(CallbackQueryHandler(self.callback_users, pattern=r"^(approve|reject|role_admin|role_dev|role_mgr|user_info|users_refresh)_"))
         
         # Запуск polling с созданием event loop
         import asyncio
@@ -306,28 +306,34 @@ class TelegramBotService:
         await query.answer()
         
         telegram_id = str(update.effective_user.id)
-        data = query.data  # approve_X, reject_X, role_admin_X, role_dev_X, role_mgr_X
+        data = query.data
         
-        logger.info(f"callback_users: user {telegram_id} clicked {data}")
+        logger.info(f"callback_users: {telegram_id} clicked {data}")
+        
+        # Кнопка обновления
+        if data == "users_refresh":
+            await query.delete_message()
+            await self.cmd_users(update, context)
+            return
+        
+        # Кнопка-разделитель
+        if data == "separator":
+            return
         
         db = self._get_db()
         try:
-            # Проверяем что это админ
             admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
-            logger.info(f"callback_users: admin check - role={admin.role if admin else None}, status={admin.status if admin else None}")
             if not admin or admin.role != "admin" or admin.status != "approved":
-                logger.warning(f"callback_users: access denied for {telegram_id}")
-                await query.edit_message_text("❌ Недостаточно прав")
+                await query.answer("❌ Недостаточно прав", show_alert=True)
                 return
             
-            # Парсим данные
             parts = data.split("_")
-            action = parts[0]  # approve, reject, role
-            target_id = int(parts[-1])  # ID пользователя
+            action = parts[0]
+            target_id = int(parts[-1])
             
             user = db.query(TelegramUser).filter(TelegramUser.id == target_id).first()
             if not user:
-                await query.edit_message_text("❌ Пользователь не найден")
+                await query.answer("❌ Пользователь не найден", show_alert=True)
                 return
             
             if action == "approve":
@@ -335,7 +341,6 @@ class TelegramBotService:
                 user.updated_at = datetime.utcnow()
                 db.commit()
                 
-                # Уведомляем пользователя
                 try:
                     await context.bot.send_message(
                         chat_id=user.telegram_id,
@@ -345,14 +350,14 @@ class TelegramBotService:
                 except:
                     pass
                 
-                await query.edit_message_text(f"✅ Пользователь {user.id} одобрен!")
+                await query.answer(f"✅ Пользователь {user.id} одобрен!", show_alert=False)
+                await self.cmd_users(update, context)
                 
             elif action == "reject":
                 user.status = "rejected"
                 user.updated_at = datetime.utcnow()
                 db.commit()
                 
-                # Уведомляем пользователя
                 try:
                     await context.bot.send_message(
                         chat_id=user.telegram_id,
@@ -362,10 +367,11 @@ class TelegramBotService:
                 except:
                     pass
                 
-                await query.edit_message_text(f"❌ Пользователь {user.id} отклонен!")
+                await query.answer(f"❌ Пользователь {user.id} отклонен!", show_alert=False)
+                await self.cmd_users(update, context)
                 
             elif action == "role":
-                new_role = parts[1]  # admin, dev, mgr
+                new_role = parts[1]
                 role_map = {"admin": "admin", "dev": "developer", "mgr": "manager"}
                 user.role = role_map.get(new_role, "manager")
                 user.updated_at = datetime.utcnow()
@@ -373,7 +379,6 @@ class TelegramBotService:
                 
                 role_name = {"admin": "👑 Admin", "dev": "💻 Developer", "mgr": "👤 Manager"}[new_role]
                 
-                # Уведомляем пользователя
                 try:
                     await context.bot.send_message(
                         chat_id=user.telegram_id,
@@ -383,10 +388,11 @@ class TelegramBotService:
                 except:
                     pass
                 
-                await query.edit_message_text(f"🔧 Роль пользователя {user.id} изменена на {role_name}")
+                await query.answer(f"🔧 Роль изменена на {role_name}!", show_alert=False)
+                await self.cmd_users(update, context)
             
-            # Обновляем список пользователей
-            await self.cmd_users(update, context)
+            elif action == "user_info":
+                await query.answer(f"👤 {user.full_name or 'Без имени'}\n@{user.username or 'N/A'}\nРоль: {user.role}\nСтатус: {user.status}", show_alert=True)
             
         finally:
             db.close()
@@ -515,53 +521,61 @@ class TelegramBotService:
             db.close()
     
     async def cmd_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /users - список пользователей (admin)"""
+        """Команда /users - управление пользователями (admin)"""
         telegram_id = str(update.effective_user.id)
         
         db = self._get_db()
         try:
-            user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
+            admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
             
-            if not user or user.role != "admin" or user.status != "approved":
-                await update.message.reply_text("❌ Недостаточно прав")
+            if not admin or admin.role != "admin" or admin.status != "approved":
+                await update.message.reply_text("❌ Недостаточно прав\n\nТолько администраторы могут управлять пользователями.", parse_mode='Markdown')
                 return
             
-            users = db.query(TelegramUser).order_by(TelegramUser.created_at.desc()).limit(20).all()
+            users = db.query(TelegramUser).order_by(TelegramUser.created_at.desc()).limit(10).all()
             
             if not users:
                 await update.message.reply_text("👥 Нет пользователей")
                 return
             
-            # Формируем сообщение и клавиатуру
-            message = "👥 *Пользователи (последние 20)*\n\n"
+            # Главное меню управления
             keyboard = []
             
             for u in users:
                 status_emoji = {"pending": "⏳", "approved": "✅", "rejected": "❌"}.get(u.status, "❓")
                 role_emoji = {"admin": "👑", "developer": "💻", "manager": "👤"}.get(u.role, "❓")
                 
-                message += f"{status_emoji} {role_emoji} `{u.id}` - @{u.username or 'N/A'} - {u.full_name or 'Без имени'}\n"
+                user_name = f"@{u.username}" if u.username else (u.full_name or f"ID:{u.id}")
                 
-                # Кнопки управления для pending пользователей
+                # Кнопка с информацией о пользователе
                 if u.status == "pending":
+                    # Для новых - одобрить/отклонить
                     keyboard.append([
-                        InlineKeyboardButton(f"✅ {u.id}", callback_data=f"approve_{u.id}"),
-                        InlineKeyboardButton(f"❌ {u.id}", callback_data=f"reject_{u.id}")
+                        InlineKeyboardButton(f"{status_emoji} {user_name}", callback_data=f"user_info_{u.id}")
+                    ])
+                    keyboard.append([
+                        InlineKeyboardButton("✅ Одобрить", callback_data=f"approve_{u.id}"),
+                        InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{u.id}")
                     ])
                 else:
-                    # Кнопки смены роли
+                    # Для активных - смена роли
                     keyboard.append([
-                        InlineKeyboardButton(f"👑 {u.id}", callback_data=f"role_admin_{u.id}"),
-                        InlineKeyboardButton(f"💻 {u.id}", callback_data=f"role_dev_{u.id}"),
-                        InlineKeyboardButton(f"👤 {u.id}", callback_data=f"role_mgr_{u.id}")
+                        InlineKeyboardButton(f"{status_emoji}{role_emoji} {user_name}", callback_data=f"user_info_{u.id}")
                     ])
+                    keyboard.append([
+                        InlineKeyboardButton("👑 Admin", callback_data=f"role_admin_{u.id}"),
+                        InlineKeyboardButton("💻 Dev", callback_data=f"role_dev_{u.id}"),
+                        InlineKeyboardButton("👤 Mgr", callback_data=f"role_mgr_{u.id}")
+                    ])
+                keyboard.append([InlineKeyboardButton("─────────────", callback_data="separator")])
             
-            message += "\n*Действия:*\n"
-            message += "👑 - Admin | 💻 - Developer | 👤 - Manager\n"
-            message += "✅ - Одобрить | ❌ - Отклонить"
+            keyboard.append([InlineKeyboardButton("🔄 Обновить", callback_data="users_refresh")])
             
             await update.message.reply_text(
-                message,
+                "👥 *Управление пользователями*\n\n"
+                "Нажмите на кнопку чтобы изменить роль или статус:\n"
+                "👑 - Admin | 💻 - Developer | 👤 - Manager\n"
+                "✅ - Одобрить | ❌ - Отклонить",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
