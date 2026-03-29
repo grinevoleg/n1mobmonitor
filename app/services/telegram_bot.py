@@ -122,7 +122,7 @@ class TelegramBotService:
                 user.updated_at = datetime.utcnow()
                 db.commit()
             
-            return user
+            return db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
         finally:
             db.close()
     
