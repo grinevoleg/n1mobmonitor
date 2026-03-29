@@ -768,6 +768,25 @@
             }
         });
         
+
+        // Click handler for bundle-id copy
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('bundle-id')) {
+                const fullId = e.target.getAttribute('data-full');
+                if (fullId) {
+                    navigator.clipboard.writeText(fullId).then(() => {
+                        const originalText = e.target.textContent;
+                        e.target.textContent = '✅ Copied!';
+                        e.target.style.background = 'rgba(0, 255, 136, 0.2)';
+                        setTimeout(() => {
+                            e.target.textContent = originalText;
+                            e.target.style.background = '';
+                        }, 1500);
+                    });
+                }
+            }
+        });
+        
     </script>
 </body>
 </html>
