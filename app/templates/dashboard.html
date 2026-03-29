@@ -523,8 +523,8 @@
                                 </div>
                             </td>
                             <td>${app.icon_url ? `<img src="${app.icon_url}" alt="" style="width:32px;height:32px;border-radius:6px;">` : '—'}</td>
-                            <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="Нажмите чтобы скопировать">${(app.identifier || app.bundle_id || '—').substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
                             <td><span style="cursor: pointer; color: #00d9ff;" onclick="showAppModal(app)">${app.name || '—'}</span></td>
+                            <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="Click to copy">${(app.identifier || app.bundle_id || '—').substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
                             <td><span class="version">${app.version || '—'}</span></td>
                             <td>
                                 <span class="timestamp">
