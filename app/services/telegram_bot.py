@@ -49,6 +49,9 @@ class TelegramBotService:
         from telegram.ext import MessageHandler, filters
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_menu_buttons))
         
+        # Обработчик callback query (для кнопок настроек)
+        self.application.add_handler(CallbackQueryHandler(self.callback_settings))
+        
         # Запуск polling с созданием event loop
         import asyncio
         loop = asyncio.new_event_loop()
@@ -229,6 +232,72 @@ class TelegramBotService:
             await self.cmd_help(update, context)
         elif text == "👥 Пользователи":
             await self.cmd_users(update, context)
+    
+    async def callback_settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик нажатий на кнопки настроек"""
+        query = update.callback_query
+        await query.answer()
+        
+        telegram_id = str(update.effective_user.id)
+        data = query.data  # toggle_status_change, toggle_version_change, etc.
+        
+        db = self._get_db()
+        try:
+            user = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
+            if not user or not user.notification_settings:
+                await query.edit_message_text("❌ Ошибка: настройки не найдены")
+                return
+            
+            settings = user.notification_settings
+            
+            # Переключение настройки
+            if data == "toggle_status_change":
+                settings.notify_status_change = not settings.notify_status_change
+            elif data == "toggle_version_change":
+                settings.notify_version_change = not settings.notify_version_change
+            elif data == "toggle_error":
+                settings.notify_error = not settings.notify_error
+            elif data == "toggle_app_added":
+                settings.notify_app_added = not settings.notify_app_added
+            elif data == "toggle_unavailable":
+                settings.notify_unavailable = not settings.notify_unavailable
+            
+            settings.updated_at = datetime.utcnow()
+            db.commit()
+            
+            # Обновляем клавиатуру
+            keyboard = [
+                [InlineKeyboardButton(
+                    "✅ Изменение статуса" if settings.notify_status_change else "❌ Изменение статуса",
+                    callback_data="toggle_status_change"
+                )],
+                [InlineKeyboardButton(
+                    "✅ Обновление версии" if settings.notify_version_change else "❌ Обновление версии",
+                    callback_data="toggle_version_change"
+                )],
+                [InlineKeyboardButton(
+                    "✅ Ошибки" if settings.notify_error else "❌ Ошибки",
+                    callback_data="toggle_error"
+                )],
+                [InlineKeyboardButton(
+                    "✅ Новые приложения" if settings.notify_app_added else "❌ Новые приложения",
+                    callback_data="toggle_app_added"
+                )],
+                [InlineKeyboardButton(
+                    "✅ Недоступно" if settings.notify_unavailable else "❌ Недоступно",
+                    callback_data="toggle_unavailable"
+                )],
+            ]
+            
+            await query.edit_message_text(
+                "⚙️ *Настройки уведомлений*\n\n"
+                "Нажмите на кнопку чтобы переключить:",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            
+        finally:
+            db.close()
     
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /status - проверка статуса"""
