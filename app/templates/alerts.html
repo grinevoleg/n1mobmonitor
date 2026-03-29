@@ -279,6 +279,28 @@
             transform: translateY(-1px);
         }
         
+
+        .loader-container {
+            text-align: center;
+            padding: 40px;
+            color: #8892b0;
+        }
+        
+        .loader {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #00d9ff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             h1 { font-size: 1.8rem; }
             .stat-value { font-size: 1.5rem; }
