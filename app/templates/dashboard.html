@@ -206,6 +206,39 @@
             margin-top: 16px;
         }
         
+
+        .bundle-id {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: rgba(0, 217, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #00d9ff;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .bundle-id:hover::after {
+            content: attr(data-full);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: pre;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 1.8rem; }
             .stat-value { font-size: 2rem; }
@@ -325,7 +358,7 @@
                                 </div>
                             </td>
                             <td>${app.icon_url ? `<img src="${app.icon_url}" alt="" style="width:32px;height:32px;border-radius:6px;">` : '—'}</td>
-                            <td><span class="bundle-id">${app.identifier || app.bundle_id || '—'}</span></td>
+                            <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="Нажмите чтобы скопировать">${(app.identifier || app.bundle_id || '—').substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
                             <td>${app.name || '—'}</td>
                             <td><span class="version">${app.version || '—'}</span></td>
                             <td>
@@ -361,6 +394,26 @@
         
         // Автообновление каждые 60 секунд
         setInterval(updateDashboard, 60000);
+
+        // Копирование Bundle ID по клику
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('bundle-id')) {
+                const fullId = e.target.getAttribute('data-full');
+                if (fullId) {
+                    navigator.clipboard.writeText(fullId).then(() => {
+                        // Показываем уведомление
+                        const originalText = e.target.textContent;
+                        e.target.textContent = '✅ Скопировано!';
+                        e.target.style.background = 'rgba(0, 255, 136, 0.2)';
+                        setTimeout(() => {
+                            e.target.textContent = originalText;
+                            e.target.style.background = '';
+                        }, 1500);
+                    });
+                }
+            }
+        });
+        
     </script>
 </body>
 </html>
