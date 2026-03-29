@@ -332,9 +332,6 @@
             document.getElementById('smtp_user').value = settings.smtp_user || '';
             document.getElementById('smtp_password').value = settings.smtp_password || '';
             document.getElementById('alert_email').value = settings.alert_email || '';
-            document.getElementById('telegram_enabled').checked = settings.telegram_enabled === 'true';
-            document.getElementById('telegram_bot_token').value = settings.telegram_bot_token || '';
-            document.getElementById('telegram_chat_id').value = settings.telegram_chat_id || '';
             loadApps();
             loadKeys();
         }
