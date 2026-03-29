@@ -341,17 +341,20 @@ class TelegramBotService:
                 user.updated_at = datetime.utcnow()
                 db.commit()
                 
+                # Уведомляем пользователя (без ожидания)
                 try:
-                    await context.bot.send_message(
-                        chat_id=user.telegram_id,
-                        text=f"✅ *Ваша заявка одобрена!*\n\nРоль: *{user.role}*\n\nИспользуйте /help для списка команд.",
-                        parse_mode='Markdown'
+                    context.application.create_task(
+                        context.bot.send_message(
+                            chat_id=user.telegram_id,
+                            text=f"✅ *Ваша заявка одобрена!*\n\nРоль: *{user.role}*",
+                            parse_mode='Markdown'
+                        )
                     )
                 except:
                     pass
                 
-                await query.answer(f"✅ Пользователь {user.id} одобрен!", show_alert=False)
-                await self.cmd_users(update, context)
+                await query.answer(f"✅ {user.id} одобрен!")
+                # Не вызываем cmd_users сразу - пользователь сам обновит
                 
             elif action == "reject":
                 user.status = "rejected"
@@ -359,16 +362,17 @@ class TelegramBotService:
                 db.commit()
                 
                 try:
-                    await context.bot.send_message(
-                        chat_id=user.telegram_id,
-                        text="❌ *Ваша заявка отклонена*\n\nОбратитесь к администратору.",
-                        parse_mode='Markdown'
+                    context.application.create_task(
+                        context.bot.send_message(
+                            chat_id=user.telegram_id,
+                            text="❌ *Ваша заявка отклонена*",
+                            parse_mode='Markdown'
+                        )
                     )
                 except:
                     pass
                 
-                await query.answer(f"❌ Пользователь {user.id} отклонен!", show_alert=False)
-                await self.cmd_users(update, context)
+                await query.answer(f"❌ {user.id} отклонен!")
                 
             elif action == "role":
                 new_role = parts[1]
@@ -379,17 +383,19 @@ class TelegramBotService:
                 
                 role_name = {"admin": "👑 Admin", "dev": "💻 Developer", "mgr": "👤 Manager"}[new_role]
                 
+                # Уведомляем пользователя
                 try:
-                    await context.bot.send_message(
-                        chat_id=user.telegram_id,
-                        text=f"🔔 *Ваша роль изменена!*\n\nНовая роль: *{user.role}*",
-                        parse_mode='Markdown'
+                    context.application.create_task(
+                        context.bot.send_message(
+                            chat_id=user.telegram_id,
+                            text=f"🔔 *Ваша роль изменена!*\n\nНовая роль: *{user.role}*",
+                            parse_mode='Markdown'
+                        )
                     )
                 except:
                     pass
                 
-                await query.answer(f"🔧 Роль изменена на {role_name}!", show_alert=False)
-                await self.cmd_users(update, context)
+                await query.answer(f"🔧 Роль: {role_name}!")
             
             elif action == "user_info":
                 await query.answer(f"👤 {user.full_name or 'Без имени'}\n@{user.username or 'N/A'}\nРоль: {user.role}\nСтатус: {user.status}", show_alert=True)
