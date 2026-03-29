@@ -308,11 +308,15 @@ class TelegramBotService:
         telegram_id = str(update.effective_user.id)
         data = query.data  # approve_X, reject_X, role_admin_X, role_dev_X, role_mgr_X
         
+        logger.info(f"callback_users: user {telegram_id} clicked {data}")
+        
         db = self._get_db()
         try:
             # Проверяем что это админ
             admin = db.query(TelegramUser).filter(TelegramUser.telegram_id == telegram_id).first()
+            logger.info(f"callback_users: admin check - role={admin.role if admin else None}, status={admin.status if admin else None}")
             if not admin or admin.role != "admin" or admin.status != "approved":
+                logger.warning(f"callback_users: access denied for {telegram_id}")
                 await query.edit_message_text("❌ Недостаточно прав")
                 return
             
