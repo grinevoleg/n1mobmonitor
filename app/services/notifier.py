@@ -217,7 +217,7 @@ async def send_alert(
 ) -> dict:
     """
     Отправка уведомления всем пользователям через все каналы
-    
+
     Returns:
         dict со статистикой отправок
     """
@@ -226,10 +226,14 @@ async def send_alert(
         # Получаем пользователей для этого типа алерта
         users = get_approved_users_for_alert(db, alert_type)
         
+        logger.info(f"send_alert: {alert_type} - {app_name} - найдено {len(users)} пользователей")
+        
         email_sent_count = 0
         telegram_sent_count = 0
         
         for user, user_settings in users:
+            logger.info(f"send_alert: отправка пользователю {user.telegram_id} (@{user.username})")
+            
             # Отправка Email
             try:
                 # Для email используем глобальные настройки
@@ -245,12 +249,14 @@ async def send_alert(
             except Exception as e:
                 logger.error(f"Failed to send telegram to user {user.id}: {e}")
         
-        return {
+        result = {
             "email_sent": email_sent_count,
             "telegram_sent": telegram_sent_count,
             "total_users": len(users)
         }
-        
+        logger.info(f"send_alert результат: {result}")
+        return result
+
     finally:
         db.close()
 

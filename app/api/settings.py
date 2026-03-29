@@ -125,7 +125,8 @@ async def add_app(
     # Немедленная проверка приложения с флагом нового приложения
     from app.services.monitor import monitor_service
     try:
-        await monitor_service.check_single_app(app_id, is_new_app=True)
+        result = await monitor_service.check_single_app(app_id, is_new_app=True)
+        logger.info(f"Новое приложение проверено: {result}")
     except Exception as e:
         logger.warning(f"Ошибка при проверке нового приложения: {e}")
     
