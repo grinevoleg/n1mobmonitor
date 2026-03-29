@@ -359,14 +359,38 @@
         </div>
     </div>
     
+
     <script>
+        // Авторизация
+        function getAuthHeader() {
+            const auth = localStorage.getItem('adminAuth');
+            return auth ? `Basic ${auth}` : null;
+        }
+
+        function checkAuth() {
+            if (!getAuthHeader()) {
+                showAuthModal();
+                return false;
+            }
+            return true;
+        }
+
+        function showAuthModal() {
+            const login = prompt('Введите логин администратора:');
+            const password = prompt('Введите пароль:');
+            if (login && password) {
+                localStorage.setItem('adminAuth', btoa(`${login}:${password}`));
+                location.reload();
+            }
+        }
+
         let currentFilter = 'all';
         let alertsData = [];
         
         // Загрузка алертов
         async function loadAlerts() {
             try {
-                const response = await fetch('/api/v1/alerts?limit=100');
+                const response = await fetch('/api/v1/alerts?limit=100', { headers: { 'Authorization': getAuthHeader() } });
                 alertsData = await response.json();
                 renderAlerts();
                 loadStats();
@@ -378,7 +402,7 @@
         // Загрузка статистики
         async function loadStats() {
             try {
-                const response = await fetch('/api/v1/alerts/stats');
+                const response = await fetch('/api/v1/alerts/stats', { headers: { 'Authorization': getAuthHeader() } });
                 const stats = await response.json();
                 
                 document.getElementById('stat-total').textContent = stats.total;
@@ -454,7 +478,7 @@
         // Отметить как прочитанное
         async function markAsRead(alertId) {
             try {
-                await fetch(`/api/v1/alerts/${alertId}/read`, { method: 'POST' });
+                await fetch(`/api/v1/alerts/${alertId}/read`, { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
             } catch (error) {
                 console.error('Ошибка:', error);
@@ -464,7 +488,7 @@
         // Отметить все как прочитанное
         async function markAllAsRead() {
             try {
-                await fetch('/api/v1/alerts/read-all', { method: 'POST' });
+                await fetch('/api/v1/alerts/read-all', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
             } catch (error) {
                 console.error('Ошибка:', error);
@@ -476,7 +500,7 @@
             if (!confirm('Удалить это событие?')) return;
             
             try {
-                await fetch(`/api/v1/alerts/${alertId}`, { method: 'DELETE' });
+                await fetch(`/api/v1/alerts/${alertId}`, { method: 'DELETE', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
             } catch (error) {
                 console.error('Ошибка:', error);
