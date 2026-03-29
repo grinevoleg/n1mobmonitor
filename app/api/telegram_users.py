@@ -53,17 +53,17 @@ def update_user_role(
     user = db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
+
     if update_data.role:
         if update_data.role not in ["admin", "developer", "manager"]:
             raise HTTPException(status_code=400, detail="Неверная роль")
         user.role = update_data.role
-    
+
     user.updated_at = db.func.now()
     db.commit()
-    db.refresh(user)
     
-    return user
+    # Возвращаем обновлённого пользователя
+    return db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
 
 
 @router.post("/{user_id}/approve", response_model=TelegramUserResponse)
@@ -80,9 +80,8 @@ def approve_user(
     user.status = "approved"
     user.updated_at = db.func.now()
     db.commit()
-    db.refresh(user)
-
-    return user
+    
+    return db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
 
 
 @router.post("/{user_id}/reject", response_model=TelegramUserResponse)
@@ -99,9 +98,8 @@ def reject_user(
     user.status = "rejected"
     user.updated_at = db.func.now()
     db.commit()
-    db.refresh(user)
-
-    return user
+    
+    return db.query(TelegramUser).filter(TelegramUser.id == user_id).first()
 
 
 @router.get("/{user_id}/settings", response_model=UserNotificationSettingsResponse)
