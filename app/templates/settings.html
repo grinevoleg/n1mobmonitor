@@ -573,6 +573,9 @@
 
         // Инициализация
         loadSettings();
+        
+        // Загружаем пользователей при загрузке страницы
+        setTimeout(() => loadTelegramUsers(), 500);
 
         // Загрузка пользователей Telegram
         async function loadTelegramUsers() {
