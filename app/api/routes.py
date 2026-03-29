@@ -9,7 +9,7 @@ from app.schemas import (
     CheckHistoryResponse,
     APIKeyCreate, APIKeyResponse
 )
-from app.api.deps import get_api_key
+from app.api.deps import get_api_key, get_admin_user
 from app.utils.security import create_api_key, revoke_api_key
 from app.services.monitor import monitor_service
 
