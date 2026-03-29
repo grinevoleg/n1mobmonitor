@@ -630,7 +630,7 @@
                 // Обновление таблицы
                 const tbody = document.getElementById('apps-body');
                 if (tbody && data.apps.length > 0) {
-                    tbody.innerHTML = data.apps.map(app => `
+                    tbody.innerHTML = data.apps.map((app, i) => `
                         <tr data-app-id="${app.id}">
                             <td>
                                 <div class="status-cell">
