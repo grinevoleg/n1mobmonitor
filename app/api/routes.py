@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/v1", tags=["API"])
 # === Apps ===
 
 @router.post("/apps", response_model=AppResponse, status_code=status.HTTP_201_CREATED)
-def add_app(app_data: AppCreate, db: Session = Depends(get_db), _=Depends(get_api_key)):
+def add_app(app_data: AppCreate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Добавить приложение для мониторинга (по bundle_id или app_id)"""
     # Проверка на дубликат по bundle_id
     if app_data.bundle_id:
@@ -52,14 +52,14 @@ def add_app(app_data: AppCreate, db: Session = Depends(get_db), _=Depends(get_ap
 
 
 @router.get("/apps", response_model=List[AppResponse])
-def list_apps(db: Session = Depends(get_db), _=Depends(get_api_key)):
+def list_apps(db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Получить список всех приложений"""
     apps = db.query(App).order_by(App.created_at.desc()).all()
     return apps
 
 
 @router.get("/apps/{app_id}", response_model=AppResponse)
-def get_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_api_key)):
+def get_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Получить информацию о приложении"""
     app = db.query(App).filter(App.id == app_id).first()
     if not app:
@@ -71,7 +71,7 @@ def get_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_api_key)):
 
 
 @router.post("/apps/{app_id}/check", response_model=AppResponse)
-async def check_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_api_key)):
+async def check_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Принудительная проверка статуса приложения"""
     app = db.query(App).filter(App.id == app_id).first()
     if not app:
@@ -93,7 +93,7 @@ async def check_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_ap
 
 
 @router.get("/apps/{app_id}/history", response_model=List[CheckHistoryResponse])
-def get_app_history(app_id: int, db: Session = Depends(get_db), _=Depends(get_api_key)):
+def get_app_history(app_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Получить историю проверок приложения"""
     app = db.query(App).filter(App.id == app_id).first()
     if not app:
@@ -110,7 +110,7 @@ def get_app_history(app_id: int, db: Session = Depends(get_db), _=Depends(get_ap
 
 
 @router.delete("/apps/{app_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_api_key)):
+def delete_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Удалить приложение из мониторинга"""
     app = db.query(App).filter(App.id == app_id).first()
     if not app:
@@ -128,14 +128,14 @@ def delete_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_api_key
 # === API Keys ===
 
 @router.post("/keys", response_model=APIKeyResponse, status_code=status.HTTP_201_CREATED)
-def create_key(key_data: APIKeyCreate, db: Session = Depends(get_db), _=Depends(get_api_key)):
+def create_key(key_data: APIKeyCreate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Создать новый API ключ"""
     db_key = create_api_key(db, key_data.description)
     return db_key
 
 
 @router.delete("/keys/{key}", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_key(key: str, db: Session = Depends(get_db), _=Depends(get_api_key)):
+def revoke_key(key: str, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Отозвать API ключ"""
     if not revoke_api_key(db, key):
         raise HTTPException(
@@ -146,7 +146,7 @@ def revoke_key(key: str, db: Session = Depends(get_db), _=Depends(get_api_key)):
 
 
 @router.get("/keys", response_model=List[APIKeyResponse])
-def list_keys(db: Session = Depends(get_db), _=Depends(get_api_key)):
+def list_keys(db: Session = Depends(get_db), _=Depends(get_admin_user)):
     """Получить список всех API ключей"""
     keys = db.query(APIKey).order_by(APIKey.created_at.desc()).all()
     return keys
