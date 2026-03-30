@@ -106,6 +106,7 @@ async def get_app_statuses(db: Session = Depends(get_db)):
             "identifier": app.bundle_id or f"ID:{app.app_id}" if app.app_id else f"ID:{app.id}",
             "name": app.name,
             "version": app.version,
+            "description": app.description,
             "icon_url": app.icon_url,
             "last_status": app.last_status,
             "last_check_at": app.last_check_at.isoformat() if app.last_check_at else None,

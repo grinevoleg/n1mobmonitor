@@ -42,6 +42,15 @@ def migrate_database():
                 db.execute(text("ALTER TABLE apps ADD COLUMN description TEXT"))
                 db.commit()
                 logger.info("✅ description column added")
+
+        # История проверок: структурированный аудит (снимки + список изменений)
+        if "check_history" in table_names:
+            ch_columns = {col["name"]: col for col in inspector.get_columns("check_history")}
+            if "audit_json" not in ch_columns:
+                logger.info("Adding audit_json column to check_history...")
+                db.execute(text("ALTER TABLE check_history ADD COLUMN audit_json TEXT"))
+                db.commit()
+                logger.info("✅ audit_json column added")
         
         # Миграция для telegram_users
         if "telegram_users" not in inspector.get_table_names():

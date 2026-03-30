@@ -498,6 +498,15 @@
             const auth = localStorage.getItem('adminAuth');
             return auth ? `Basic ${auth}` : null;
         }
+
+        function escapeHtml(s) {
+            if (s == null || s === '') return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
         
         // App Modal Functions
         function showAppModal(app) {
@@ -560,7 +569,7 @@
             const historyCount = document.getElementById('history-count');
             
             try {
-                const response = await fetch(`/api/v1/apps/${appId}/history?limit=20`, {
+                const response = await fetch(`/api/v1/apps/${appId}/history?limit=30`, {
                     headers: { 'Authorization': getAuthHeader() }
                 });
                 
@@ -592,15 +601,32 @@
                     }[item.status] || '⚪';
                     
                     const date = new Date(item.checked_at).toLocaleDateString() + ' ' + new Date(item.checked_at).toLocaleTimeString();
+                    const audit = item.audit;
+                    const kindLabel = audit && audit.check_kind === 'manual' ? 'Вручную' : (audit ? 'По расписанию' : '');
+                    const kindHtml = kindLabel
+                        ? `<span style="font-size:0.72rem;color:#8892b0;margin-left:8px;">${kindLabel}</span>`
+                        : '';
+                    let changesHtml = '';
+                    if (audit && audit.changes && audit.changes.length) {
+                        changesHtml = '<ul style="margin:8px 0 0 16px;color:#c8d2e8;font-size:0.78rem;line-height:1.4;">' +
+                            audit.changes.map(c => {
+                                const lo = c.old != null ? String(c.old) : '—';
+                                const ln = c.new != null ? String(c.new) : '—';
+                                return `<li><strong>${escapeHtml(c.label || c.field)}</strong>: ${escapeHtml(lo)} → ${escapeHtml(ln)}</li>`;
+                            }).join('') + '</ul>';
+                    } else if (audit && audit.had_changes === false) {
+                        changesHtml = '<div style="margin-top:6px;font-size:0.75rem;color:#8892b0;">Изменений в карточке нет</div>';
+                    }
                     
                     return `
                         <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span>${statusEmoji} <strong style="color: #fff;">${item.status}</strong></span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap;">
+                                <span>${statusEmoji} <strong style="color: #fff;">${escapeHtml(item.status)}</strong>${kindHtml}</span>
                                 <span style="color: #8892b0; font-size: 0.85rem;">${date}</span>
                             </div>
-                            <div style="color: #a8b2d1; font-size: 0.9rem;">${item.message || 'No message'}</div>
-                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">Version: ${item.version}</div>` : ''}
+                            <div style="color: #a8b2d1; font-size: 0.9rem;">${escapeHtml(item.message || 'No message')}</div>
+                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">Версия (ответ API): ${escapeHtml(item.version)}</div>` : ''}
+                            ${changesHtml}
                         </div>
                     `;
                 }).join('');

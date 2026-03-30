@@ -5,25 +5,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.models import Alert, App
-
 logger = logging.getLogger(__name__)
 
 # Макс. длина текста в JSON алерта (описание и т.д.)
 _TEXT_ALERT_MAX = 800
-
-
-def _norm_str(v: Optional[str]) -> Optional[str]:
-    if v is None:
-        return None
-    s = str(v).strip()
-    return s if s else None
-
-
-def _norm_desc(v: Optional[str]) -> Optional[str]:
-    if v is None:
-        return None
-    s = str(v).strip()
-    return s if s else None
 
 
 def _truncate_for_alert(s: Optional[str]) -> Optional[str]:
@@ -32,41 +17,6 @@ def _truncate_for_alert(s: Optional[str]) -> Optional[str]:
     if len(s) <= _TEXT_ALERT_MAX:
         return s
     return s[: _TEXT_ALERT_MAX] + "…"
-
-
-def snapshot_from_app(app: App) -> Dict[str, Any]:
-    """Снимок полей приложения для сравнения до/после проверки."""
-    return {
-        "last_status": app.last_status,
-        "name": _norm_str(app.name),
-        "version": _norm_str(app.version),
-        "icon_url": _norm_str(app.icon_url),
-        "description": _norm_desc(app.description),
-        "bundle_id": _norm_str(app.bundle_id),
-        "app_id": _norm_str(app.app_id),
-    }
-
-
-def format_changes_line(before: Dict[str, Any], after: Dict[str, Any]) -> Optional[str]:
-    """Краткая строка изменений для записи в историю проверок."""
-    parts: List[str] = []
-    if before.get("last_status") != after.get("last_status"):
-        parts.append(f"статус: {before.get('last_status')!s}→{after.get('last_status')!s}")
-    if before.get("version") != after.get("version"):
-        parts.append(f"версия: {before.get('version')!s}→{after.get('version')!s}")
-    if before.get("name") != after.get("name"):
-        parts.append("название изменено")
-    if before.get("icon_url") != after.get("icon_url"):
-        parts.append("иконка изменена")
-    if before.get("description") != after.get("description"):
-        parts.append("описание изменено")
-    if before.get("bundle_id") != after.get("bundle_id"):
-        parts.append("bundle_id изменён")
-    if before.get("app_id") != after.get("app_id"):
-        parts.append("Apple ID изменён")
-    if not parts:
-        return None
-    return "; ".join(parts)
 
 
 def check_and_create_alerts(

@@ -9,11 +9,13 @@ from app.database import SessionLocal
 from app.models import App, CheckHistory
 from app.services.app_store import app_store_client
 from app.services.sheets import sheets_writer
-from app.services.alert_detector import (
-    check_and_create_alerts,
+from app.services.change_log import (
     snapshot_from_app,
     format_changes_line,
+    build_audit_json,
 )
+from app.services.alert_detector import check_and_create_alerts
+from app.services.notifier import get_setting
 from app.services.notifier import send_alert
 from app.config import settings
 
@@ -30,22 +32,29 @@ class MonitorService:
     
     def _get_next_check_interval(self, app_id: int) -> int:
         """
-        Расчёт интервала до следующей проверки с рандомизацией
-        
-        Args:
-            app_id: ID приложения
-            
-        Returns:
-            Интервал в минутах с учётом jitter
+        Интервал до следующей проверки (минуты): из БД настроек monitor_interval / monitor_jitter,
+        с запасом из .env при ошибке парсинга. Джиттер не больше базового интервала.
         """
-        base_interval = settings.monitor_interval
-        jitter = settings.monitor_jitter
-        
-        # Случайное отклонение от базового интервала
+        _ = app_id
+        db = SessionLocal()
+        try:
+            try:
+                base_interval = int(
+                    get_setting(db, "monitor_interval", str(settings.monitor_interval))
+                )
+                jitter = int(
+                    get_setting(db, "monitor_jitter", str(settings.monitor_jitter))
+                )
+            except ValueError:
+                base_interval = settings.monitor_interval
+                jitter = settings.monitor_jitter
+        finally:
+            db.close()
+
+        base_interval = max(5, min(base_interval, 24 * 60))
+        jitter = max(0, min(jitter, base_interval))
         random_jitter = random.randint(-jitter, jitter)
-        interval = max(5, base_interval + random_jitter)  # Минимум 5 минут
-        
-        return interval
+        return max(5, base_interval + random_jitter)
     
     def start(self):
         """Запуск планировщика"""
@@ -79,7 +88,10 @@ class MonitorService:
         
         self.scheduler.start()
         self._running = True
-        logger.info(f"Мониторинг запущен (интервал: ~{settings.monitor_interval}±{settings.monitor_jitter} мин)")
+        logger.info(
+            "Мониторинг запущен: тик каждую минуту; интервал и джиттер для каждого приложения "
+            "читаются из настроек БД (monitor_interval / monitor_jitter), с запасом из .env"
+        )
     
     def stop(self):
         """Остановка планировщика"""
@@ -106,7 +118,7 @@ class MonitorService:
                     continue  # Ещё не время для проверки
                 
                 # Проверяем приложение
-                await self._check_app(db, app)
+                await self._check_app(db, app, check_kind="scheduled")
                 checked_count += 1
                 
                 # Планируем следующую проверку с рандомизацией
@@ -123,14 +135,18 @@ class MonitorService:
         finally:
             db.close()
     
-    async def _check_app(self, db: Session, app: App, is_new_app: bool = False):
+    async def _check_app(
+        self,
+        db: Session,
+        app: App,
+        is_new_app: bool = False,
+        check_kind: str = "scheduled",
+    ):
         """
-        Проверка одного приложения
+        Проверка одного приложения.
 
-        Args:
-            db: Сессия БД
-            app: Модель приложения
-            is_new_app: флаг нового приложения
+        check_kind: scheduled — фоновый цикл; manual — кнопка/API.
+        Каждая проверка пишет запись в check_history с audit_json (снимки и список изменений).
         """
         try:
             snapshot_before = snapshot_from_app(app)
@@ -169,11 +185,20 @@ class MonitorService:
             if changes_line:
                 history_msg = f"{history_msg} | Изменения: {changes_line}"
 
+            audit = build_audit_json(
+                snapshot_before,
+                snapshot_after,
+                check_kind=check_kind,
+                api_status=result["status"],
+                api_message=result.get("message"),
+            )
+
             history = CheckHistory(
                 app_id=app.id,
                 status=result["status"],
                 version=result.get("version"),
                 message=history_msg,
+                audit_json=audit,
                 checked_at=datetime.utcnow(),
             )
             db.add(history)
@@ -230,10 +255,19 @@ class MonitorService:
             if cl:
                 history_msg = f"{history_msg} | Изменения: {cl}"
 
+            audit = build_audit_json(
+                snapshot_before,
+                snapshot_after,
+                check_kind=check_kind,
+                api_status="error",
+                api_message=str(e),
+            )
+
             history = CheckHistory(
                 app_id=app.id,
                 status="error",
                 message=history_msg,
+                audit_json=audit,
                 checked_at=datetime.utcnow(),
             )
             db.add(history)
@@ -273,7 +307,9 @@ class MonitorService:
             if not app:
                 return {"error": "Приложение не найдено"}
 
-            await self._check_app(db, app, is_new_app=is_new_app)
+            await self._check_app(
+                db, app, is_new_app=is_new_app, check_kind="manual"
+            )
 
             return {
                 "status": app.last_status,

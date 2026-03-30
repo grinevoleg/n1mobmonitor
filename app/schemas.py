@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import re
 
 
@@ -58,14 +58,15 @@ class AppStatusResponse(BaseModel):
 # === Check History Schemas ===
 
 class CheckHistoryResponse(BaseModel):
-    """Схема записи истории проверок"""
+    """Схема записи истории проверок (audit — распарсенный audit_json для разбора)"""
     id: int
     app_id: int
     status: str
     version: Optional[str] = None
     message: Optional[str] = None
     checked_at: datetime
-    
+    audit: Optional[Dict[str, Any]] = None
+
     class Config:
         from_attributes = True
 

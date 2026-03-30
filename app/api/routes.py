@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -91,8 +93,13 @@ async def check_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_ad
 
 
 @router.get("/apps/{app_id}/history", response_model=List[CheckHistoryResponse])
-def get_app_history(app_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
-    """Получить историю проверок приложения"""
+def get_app_history(
+    app_id: int,
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _=Depends(get_admin_user),
+):
+    """История проверок с полем audit (снимки до/после и список изменений)."""
     app = db.query(App).filter(App.id == app_id).first()
     if not app:
         raise HTTPException(
@@ -100,11 +107,34 @@ def get_app_history(app_id: int, db: Session = Depends(get_db), _=Depends(get_ad
             detail="Приложение не найдено"
         )
     
-    history = db.query(CheckHistory).filter(
-        CheckHistory.app_id == app_id
-    ).order_by(CheckHistory.checked_at.desc()).limit(100).all()
-    
-    return history
+    rows = (
+        db.query(CheckHistory)
+        .filter(CheckHistory.app_id == app_id)
+        .order_by(CheckHistory.checked_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    result: List[CheckHistoryResponse] = []
+    for h in rows:
+        audit = None
+        if h.audit_json:
+            try:
+                audit = json.loads(h.audit_json)
+            except json.JSONDecodeError:
+                audit = None
+        result.append(
+            CheckHistoryResponse(
+                id=h.id,
+                app_id=h.app_id,
+                status=h.status,
+                version=h.version,
+                message=h.message,
+                checked_at=h.checked_at,
+                audit=audit,
+            )
+        )
+    return result
 
 
 @router.delete("/apps/{app_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -53,6 +53,8 @@ class CheckHistory(Base):
     status = Column(String, nullable=False)  # "available", "unavailable", "error"
     version = Column(String, nullable=True)
     message = Column(Text, nullable=True)
+    # JSON: снимки до/после, список изменений, тип проверки (scheduled/manual)
+    audit_json = Column(Text, nullable=True)
     checked_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     # Связи
