@@ -501,6 +501,7 @@
         
         // App Modal Functions
         function showAppModal(app) {
+            currentAppId = app.id;  // Store for force check
             const modal = document.getElementById('app-modal');
             
             // Icon
@@ -707,6 +708,7 @@
                 <div class="modal-title">
                     <h2 id="modal-name">App Name</h2>
                     <div class="modal-meta" id="modal-meta"></div>
+                    <button class="btn btn-secondary" onclick="forceCheckApp()" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;">🔄 Force Check</button>
                 </div>
             </div>
             <div class="modal-description" id="modal-description"></div>
@@ -753,9 +755,43 @@
     
     <script>
         // App Modal Functions
-        function closeAppModal() {
-            document.getElementById('app-modal').classList.remove('active');
+        let currentAppId = null;
+
+function closeAppModal() {
+    document.getElementById('app-modal').classList.remove('active');
+}
+
+async function forceCheckApp() {
+    if (!currentAppId) return;
+    
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Checking...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch(`/api/v1/apps/${currentAppId}/check`, {
+            method: 'POST',
+            headers: { 'Authorization': getAuthHeader() }
+        });
+        
+        if (response.ok) {
+            btn.textContent = '✅ Checked!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                location.reload();  // Reload to show new data
+            }, 1500);
+        } else {
+            btn.textContent = '❌ Error';
+            btn.disabled = false;
         }
+    } catch (error) {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        console.error('Force check error:', error);
+    }
+}
         
         // Close modal on overlay click
         document.getElementById('app-modal').addEventListener('click', function(e) {
