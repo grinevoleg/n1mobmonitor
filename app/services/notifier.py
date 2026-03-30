@@ -2,6 +2,7 @@ import logging
 import smtplib
 import httpx
 import json
+from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Any, List, Tuple
@@ -11,6 +12,8 @@ from app.models import Setting, TelegramUser, UserNotificationSettings, UserRole
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+WEBHOOK_TIMEOUT = 12.0
 
 # Типы алертов по «карточке» приложения — уважают notify_version_change
 METADATA_ALERT_TYPES = frozenset({
@@ -229,6 +232,49 @@ async def send_telegram_alert(
         return False
     finally:
         db.close()
+async def send_webhook_alert(
+    webhook_url: str,
+    alert_type: str,
+    app_name: str,
+    app_identifier: str,
+    old_value: Optional[str] = None,
+    new_value: Optional[str] = None,
+) -> bool:
+    """
+    POST JSON на настроенный URL при алерте (Slack/Discord/in-house).
+    Только http(s); ошибки сети не пробрасываются наружу.
+    """
+    u = (webhook_url or "").strip()
+    if not u:
+        return False
+    low = u.lower()
+    if not (low.startswith("https://") or low.startswith("http://")):
+        logger.warning("alert_webhook_url пропущен: нужен URL с http:// или https://")
+        return False
+    payload: Dict[str, Any] = {
+        "source": "app_store_monitor",
+        "alert_type": alert_type,
+        "app_name": app_name,
+        "app_identifier": app_identifier,
+        "old_value": old_value,
+        "new_value": new_value,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        async with httpx.AsyncClient(timeout=WEBHOOK_TIMEOUT) as client:
+            response = await client.post(
+                u,
+                json=payload,
+                headers={"User-Agent": "AppStoreMonitor/1.0 (+webhook)"},
+            )
+            response.raise_for_status()
+        logger.info("Webhook алерта доставлен: %s — %s", alert_type, app_name)
+        return True
+    except Exception as e:
+        logger.warning("Webhook алерта не доставлен (%s): %s", alert_type, e)
+        return False
+
+
 async def send_alert(
     alert_type: str,
     app_name: str,
@@ -244,6 +290,8 @@ async def send_alert(
     """
     db = SessionLocal()
     try:
+        webhook_url = get_setting(db, "alert_webhook_url", "").strip()
+
         # Получаем пользователей для этого типа алерта
         users = get_approved_users_for_alert(db, alert_type)
         
@@ -270,10 +318,25 @@ async def send_alert(
             except Exception as e:
                 logger.error(f"Failed to send telegram to user {user.id}: {e}")
         
+        webhook_sent = False
+        if webhook_url:
+            try:
+                webhook_sent = await send_webhook_alert(
+                    webhook_url,
+                    alert_type,
+                    app_name,
+                    app_identifier,
+                    old_value,
+                    new_value,
+                )
+            except Exception as e:
+                logger.error("Ошибка webhook при алерте: %s", e)
+
         result = {
             "email_sent": email_sent_count,
             "telegram_sent": telegram_sent_count,
-            "total_users": len(users)
+            "total_users": len(users),
+            "webhook_sent": webhook_sent,
         }
         logger.info(f"send_alert результат: {result}")
         return result

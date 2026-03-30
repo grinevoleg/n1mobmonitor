@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     
     # Monitoring jitter (minutes) - случайное отклонение от интервала
     monitor_jitter: int = 5  # ±5 минут
+
+    # Параллельные lookup к Apple (семафор в мониторе); не поднимайте слишком высоко из‑за 429
+    monitor_lookup_concurrency: int = 4
+
+    # Лимит соединений общего httpx.AsyncClient для iTunes Lookup
+    http_max_connections: int = 20
     
     # Admin credentials
     admin_username: str = "admin"

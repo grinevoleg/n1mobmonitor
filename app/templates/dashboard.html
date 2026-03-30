@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ locale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Store Monitor - Дашборд</title>
+    <title>{{ t('dash.page.title') }}</title>
     <style>
         * {
             margin: 0;
@@ -11,11 +11,17 @@
             box-sizing: border-box;
         }
         
+        :root {
+            --text-primary: #e8ecf4;
+            --text-muted: #c5cfdf;
+            --text-danger: #ff9b9b;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            color: #fff;
+            color: var(--text-primary);
         }
         
         .container {
@@ -38,7 +44,7 @@
         }
         
         .subtitle {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 1.1rem;
         }
         
@@ -50,7 +56,7 @@
         }
         
         .nav a {
-            color: #8892b0;
+            color: var(--text-muted);
             text-decoration: none;
             padding: 10px 20px;
             border-radius: 8px;
@@ -61,6 +67,35 @@
         .nav a:hover, .nav a.active {
             background: rgba(0, 217, 255, 0.2);
             color: #00d9ff;
+        }
+
+        .lang-switch {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .lang-switch a {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .lang-switch a:hover, .lang-switch a.active {
+            background: rgba(0, 217, 255, 0.2);
+            color: #00d9ff;
+        }
+        .nav-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 30px;
         }
 
         .stats {
@@ -86,7 +121,7 @@
         }
         
         .stat-label {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -123,7 +158,7 @@
         
         th {
             background: rgba(255, 255, 255, 0.05);
-            color: #8892b0;
+            color: var(--text-muted);
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
@@ -161,17 +196,17 @@
         }
         
         .version {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.9rem;
         }
         
         .timestamp {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.85rem;
         }
         
         .last-error {
-            color: #ff6b6b;
+            color: var(--text-danger);
             font-size: 0.85rem;
             max-width: 300px;
             overflow: hidden;
@@ -182,7 +217,7 @@
         .refresh-info {
             text-align: center;
             margin-top: 24px;
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.9rem;
         }
         
@@ -193,13 +228,13 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
         .empty-state p {
@@ -286,7 +321,7 @@
             right: 16px;
             background: none;
             border: none;
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 1.5rem;
             cursor: pointer;
             transition: color 0.3s;
@@ -334,7 +369,7 @@
             padding: 6px 12px;
             border-radius: 8px;
             font-size: 0.85rem;
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
         .modal-description {
@@ -355,7 +390,7 @@
         
         .modal-section h3 {
             font-size: 0.9rem;
-            color: #8892b0;
+            color: var(--text-muted);
             margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -373,14 +408,14 @@
         }
         
         .modal-info-label {
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
 
         .empty-state {
             text-align: center;
             padding: 20px;
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.9rem;
         }
         
@@ -402,48 +437,54 @@
     <div class="container">
         <header>
             <h1>🍏 App Store Monitor</h1>
-            <p class="subtitle">Мониторинг доступности приложений в реальном времени</p>
+            <p class="subtitle">{{ t('dash.page.subtitle') }}</p>
         </header>
         
-        <nav class="nav">
-            <a href="/dashboard" class="active">📊 Дашборд</a>
-            <a href="/alerts">🔔 Алерты</a>
-            <a href="/settings">⚙️ Настройки</a>
+        <div class="nav-wrap">
+        <nav class="nav" aria-label="{{ t('a11y.nav_main') }}">
+            <a href="/dashboard" class="active" aria-current="page">📊 {{ t('nav.dashboard') }}</a>
+            <a href="/alerts">🔔 {{ t('nav.alerts') }}</a>
+            <a href="/settings">⚙️ {{ t('nav.settings') }}</a>
         </nav>
+        <div class="lang-switch" role="group" aria-label="{{ t('nav.lang') }}">
+            <a href="/locale/ru" class="{{ 'active' if locale == 'ru' else '' }}">{{ t('lang.ru') }}</a>
+            <a href="/locale/en" class="{{ 'active' if locale == 'en' else '' }}">{{ t('lang.en') }}</a>
+        </div>
+        </div>
 
-        <div class="stats">
+        <div class="stats" aria-live="polite" aria-atomic="true">
             <div class="stat-card total">
                 <div class="stat-value" id="stat-total">{{ total }}</div>
-                <div class="stat-label">Total Apps</div>
+                <div class="stat-label">{{ t('dash.stats.total') }}</div>
             </div>
             <div class="stat-card available">
                 <div class="stat-value" id="stat-available">{{ available }}</div>
-                <div class="stat-label">Available</div>
+                <div class="stat-label">{{ t('dash.stats.available') }}</div>
             </div>
             <div class="stat-card unavailable">
                 <div class="stat-value" id="stat-unavailable">{{ unavailable }}</div>
-                <div class="stat-label">Unavailable</div>
+                <div class="stat-label">{{ t('dash.stats.unavailable') }}</div>
             </div>
             <div class="stat-card error">
                 <div class="stat-value" id="stat-error">{{ error }}</div>
-                <div class="stat-label">Errors</div>
+                <div class="stat-label">{{ t('dash.stats.errors') }}</div>
             </div>
         </div>
         
         <div class="apps-table">
-            <h2>Applications</h2>
+            <h2>{{ t('dash.table.title') }}</h2>
             {% if apps %}
-            <table>
+            <table role="table" aria-label="{{ t('dash.table.aria') }}">
                 <thead>
                     <tr>
-                        <th>Status</th>
-                        <th>Icon</th>
-                        <th>Name</th>
-                        <th>Bundle ID</th>
-                        <th>Version</th>
-                        <th>Last Check</th>
-                        <th>Next Check</th>
-                        <th>Error</th>
+                        <th scope="col">{{ t('dash.col.status') }}</th>
+                        <th scope="col">{{ t('dash.col.icon') }}</th>
+                        <th scope="col">{{ t('dash.col.name') }}</th>
+                        <th scope="col">{{ t('dash.col.bundle') }}</th>
+                        <th scope="col">{{ t('dash.col.version') }}</th>
+                        <th scope="col">{{ t('dash.col.last_check') }}</th>
+                        <th scope="col">{{ t('dash.col.next_check') }}</th>
+                        <th scope="col">{{ t('dash.col.error') }}</th>
                     </tr>
                 </thead>
                 <tbody id="apps-body">
@@ -451,27 +492,27 @@
                     <tr data-app-id="{{ app.id }}">
                         <td>
                             <div class="status-cell">
-                                <span class="status-icon">{{ get_status_icon(app.last_status) }}</span>
+                                <span class="status-icon" aria-hidden="true">{{ get_status_icon(app.last_status) }}</span>
                                 <span>{{ get_status_display(app.last_status) }}</span>
                             </div>
                         </td>
-                        <td>{% if app.icon_url %}<img src="{{ app.icon_url }}" alt="" style="width:32px;height:32px;border-radius:6px;">{% else %}—{% endif %}</td>
-                        <td>{{ app.name or '—' }}</td>
+                        <td>{% if app.icon_url %}<img src="{{ app.icon_url }}" alt="{{ t('dash.icon.alt', name=(app.name or app.bundle_id or app.app_id or '')) }}" width="32" height="32" style="width:32px;height:32px;border-radius:6px;">{% else %}{{ t('common.dash') }}{% endif %}</td>
+                        <td>{{ app.name or t('common.dash') }}</td>
                         <td><span class="bundle-id" data-full="{{ app.bundle_id or app.app_id or '' }}">{{ app.bundle_id or (app.app_id if app.app_id else 'ID:' + app.id|string) }}</span></td>
-                        <td><span class="version">{{ app.version or '—' }}</span></td>
+                        <td><span class="version">{{ app.version or t('common.dash') }}</span></td>
                         <td>
                             <span class="timestamp">
-                                {{ app.last_check_at.strftime('%Y-%m-%d %H:%M') if app.last_check_at else '—' }}
+                                {{ app.last_check_at.strftime('%Y-%m-%d %H:%M') if app.last_check_at else t('common.dash') }}
                             </span>
                         </td>
                         <td>
                             <span class="timestamp next-check-at">
-                                {{ app.next_check_at.strftime('%Y-%m-%d %H:%M') if app.next_check_at else '—' }}
+                                {{ app.next_check_at.strftime('%Y-%m-%d %H:%M') if app.next_check_at else t('common.dash') }}
                             </span>
                         </td>
                         <td>
                             <span class="last-error" title="{{ app.last_error or '' }}">
-                                {{ app.last_error or '—' }}
+                                {{ app.last_error or t('common.dash') }}
                             </span>
                         </td>
                     </tr>
@@ -480,25 +521,30 @@
             </table>
             {% else %}
             <div class="empty-state">
-                <p>📭 No apps for monitoring</p>
-                <p>Add your first app via API</p>
+                <p>📭 {{ t('dash.empty.title') }}</p>
+                <p>{{ t('dash.empty.hint') }}</p>
             </div>
             {% endif %}
         </div>
         
         <div class="refresh-info">
-            <p>Auto-refresh every <span>60 seconds</span> | Last updated: <span id="last-update">—</span></p>
-            <p style="margin-top: 8px; font-size: 0.8rem;">Version: <span style="color: #00d9ff; font-weight: bold;">{{ version }}</span></p>
-            <p style="margin-top: 10px; font-size: 0.8rem; color: #8892b0;">История проверок — в карточке приложения (клик по названию в таблице).</p>
+            <p>{{ t('dash.footer.refresh', secs=60) }} <span id="last-update">{{ t('common.dash') }}</span></p>
+            <p style="margin-top: 8px; font-size: 0.8rem;">{{ t('dash.footer.version') }} <span style="color: #00d9ff; font-weight: bold;">{{ version }}</span></p>
+            <p style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">{{ t('dash.footer.history_hint') }}</p>
         </div>
     </div>
     
     <script>
+        window.__LOCALE__ = "{{ locale }}";
+        const I18N = {{ i18n | tojson }};
+        const LOCALE_TAG = "{{ locale_tag }}";
         // Authorization
         function getAuthHeader() {
             const auth = localStorage.getItem('adminAuth');
             return auth ? `Basic ${auth}` : null;
         }
+
+        var currentAppId = null;
 
         function escapeHtml(s) {
             if (s == null || s === '') return '';
@@ -513,6 +559,7 @@
         function showAppModal(app) {
             currentAppId = app.id;  // Store for force check
             const modal = document.getElementById('app-modal');
+            modal.dataset.appId = String(app.id);
             
             // Icon
             const iconEl = document.getElementById('modal-icon');
@@ -524,12 +571,12 @@
             }
             
             // Name
-            document.getElementById('modal-name').textContent = app.name || 'Unknown';
+            document.getElementById('modal-name').textContent = app.name || I18N.no_name;
             
             // Meta badges
             const metaEl = document.getElementById('modal-meta');
             metaEl.innerHTML = `
-                <span class="modal-badge">${app.status_icon || ''} ${app.status_display || app.last_status || 'Unknown'}</span>
+                <span class="modal-badge">${app.status_icon || ''} ${app.status_display || app.last_status || I18N.cell_empty}</span>
                 <span class="modal-badge">v${app.version || '?'}</span>
             `;
             
@@ -543,15 +590,15 @@
             }
             
             // Info rows
-            document.getElementById('modal-bundle-id').textContent = app.bundle_id || app.identifier || '—';
-            document.getElementById('modal-app-id').textContent = app.app_id || '—';
-            document.getElementById('modal-version').textContent = app.version || '—';
-            document.getElementById('modal-status').textContent = app.status_display || app.last_status || '—';
-            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString('ru-RU') : '—';
+            document.getElementById('modal-bundle-id').textContent = app.bundle_id || app.identifier || I18N.cell_empty;
+            document.getElementById('modal-app-id').textContent = app.app_id || I18N.cell_empty;
+            document.getElementById('modal-version').textContent = app.version || I18N.cell_empty;
+            document.getElementById('modal-status').textContent = app.status_display || app.last_status || I18N.status_unknown;
+            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString(LOCALE_TAG) : I18N.cell_empty;
             document.getElementById('modal-next-check').textContent = app.next_check_at
-                ? new Date(app.next_check_at).toLocaleString('ru-RU')
-                : (app.is_active === false ? 'Выкл.' : '—');
-            document.getElementById('modal-last-error').textContent = app.last_error || '—';
+                ? new Date(app.next_check_at).toLocaleString(LOCALE_TAG)
+                : (app.is_active === false ? I18N.next_off : I18N.cell_empty);
+            document.getElementById('modal-last-error').textContent = app.last_error || I18N.cell_empty;
             
             // App Store Link
             const appStoreLink = document.getElementById('modal-app-store-link');
@@ -568,20 +615,27 @@
             modal.classList.add('active');
         }
 
+        function reloadModalHistory() {
+            const id = document.getElementById('app-modal')?.dataset.appId;
+            if (id) loadAppHistory(parseInt(id, 10));
+        }
+
                 async function loadAppHistory(appId) {
             const historyList = document.getElementById('modal-history-list');
             const historyCount = document.getElementById('modal-history-count');
             
             try {
-                const response = await fetch(`/api/v1/apps/${appId}/history?limit=30`, {
+                const onlyChanges = document.getElementById('history-only-changes')?.checked;
+                const q = onlyChanges ? '?limit=30&only_changes=true' : '?limit=30';
+                const response = await fetch(`/api/v1/apps/${appId}/history${q}`, {
                     headers: { 'Authorization': getAuthHeader() }
                 });
                 
                 if (!response.ok) {
                     if (response.status === 401) {
-                        historyList.innerHTML = '<div class="empty-state">Please log in to view history</div>';
+                        historyList.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.history_login) + '</div>';
                     } else {
-                        historyList.innerHTML = '<div class="empty-state">No history available</div>';
+                        historyList.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.history_unavailable) + '</div>';
                     }
                     historyCount.textContent = '';
                     return;
@@ -590,7 +644,7 @@
                 const history = await response.json();
                 
                 if (history.length === 0) {
-                    historyList.innerHTML = '<div class="empty-state">No history yet</div>';
+                    historyList.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.history_empty) + '</div>';
                     historyCount.textContent = '';
                     return;
                 }
@@ -604,37 +658,38 @@
                         'error': '🟡'
                     }[item.status] || '⚪';
                     const statusDisplay = {
-                        available: 'Доступно',
-                        unavailable: 'Недоступно',
-                        error: 'Ошибка'
+                        available: I18N.status_available,
+                        unavailable: I18N.status_unavailable,
+                        error: I18N.status_error
                     }[item.status] || item.status;
                     
-                    const date = new Date(item.checked_at).toLocaleDateString() + ' ' + new Date(item.checked_at).toLocaleTimeString();
+                    const date = new Date(item.checked_at).toLocaleString(LOCALE_TAG);
                     const audit = item.audit;
-                    const kindLabel = audit && audit.check_kind === 'manual' ? 'Вручную' : (audit ? 'По расписанию' : '');
+                    const kindLabel = audit && audit.check_kind === 'manual' ? I18N.check_kind_manual : (audit ? I18N.check_kind_scheduled : '');
                     const kindHtml = kindLabel
-                        ? `<span style="font-size:0.72rem;color:#8892b0;margin-left:8px;">${kindLabel}</span>`
+                        ? `<span style="font-size:0.72rem;color:var(--text-muted);margin-left:8px;">${kindLabel}</span>`
                         : '';
                     let changesHtml = '';
                     if (audit && audit.changes && audit.changes.length) {
                         changesHtml = '<ul style="margin:8px 0 0 16px;color:#c8d2e8;font-size:0.78rem;line-height:1.4;">' +
                             audit.changes.map(c => {
-                                const lo = c.old != null ? String(c.old) : '—';
-                                const ln = c.new != null ? String(c.new) : '—';
-                                return `<li><strong>${escapeHtml(c.label || c.field)}</strong>: ${escapeHtml(lo)} → ${escapeHtml(ln)}</li>`;
+                                const lo = c.old != null ? String(c.old) : I18N.cell_empty;
+                                const ln = c.new != null ? String(c.new) : I18N.cell_empty;
+                                const fl = c.field ? (I18N['field_' + c.field] || c.label || c.field) : (c.label || c.field);
+                                return `<li><strong>${escapeHtml(fl)}</strong>: ${escapeHtml(lo)} → ${escapeHtml(ln)}</li>`;
                             }).join('') + '</ul>';
                     } else if (audit && audit.had_changes === false) {
-                        changesHtml = '<div style="margin-top:6px;font-size:0.75rem;color:#8892b0;">Изменений в карточке нет</div>';
+                        changesHtml = '<div style="margin-top:6px;font-size:0.75rem;color:var(--text-muted);">' + escapeHtml(I18N.no_card_changes) + '</div>';
                     }
                     
                     return `
                         <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap;">
                                 <span>${statusEmoji} <strong style="color: #fff;">${escapeHtml(statusDisplay)}</strong>${kindHtml}</span>
-                                <span style="color: #8892b0; font-size: 0.85rem;">${date}</span>
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">${date}</span>
                             </div>
-                            <div style="color: #a8b2d1; font-size: 0.9rem;">${escapeHtml(item.message || 'No message')}</div>
-                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">Версия (ответ API): ${escapeHtml(item.version)}</div>` : ''}
+                            <div style="color: #a8b2d1; font-size: 0.9rem;">${escapeHtml(item.message || I18N.no_message)}</div>
+                            ${item.version ? `<div style="color: #00d9ff; font-size: 0.85rem; margin-top: 4px;">${escapeHtml(I18N.api_version)} ${escapeHtml(item.version)}</div>` : ''}
                             ${changesHtml}
                         </div>
                     `;
@@ -642,14 +697,14 @@
                 
             } catch (error) {
                 console.error('Failed to load history:', error);
-                historyList.innerHTML = '<div class="empty-state">Failed to load history</div>';
+                historyList.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.history_load_error) + '</div>';
                 historyCount.textContent = '';
             }
         }
 
         async function updateDashboard() {
             try {
-                const response = await fetch('/api/v1/apps/statuses');
+                const response = await fetch('/api/v1/apps/statuses?lang=' + encodeURIComponent(window.__LOCALE__ || 'ru'));
                 const data = await response.json();
                 
                 // Обновление статистики
@@ -668,39 +723,39 @@
                         <tr data-app-id="${app.id}">
                             <td>
                                 <div class="status-cell">
-                                    <span class="status-icon">${app.status_icon}</span>
+                                    <span class="status-icon" aria-hidden="true">${app.status_icon}</span>
                                     <span>${app.status_display}</span>
                                 </div>
                             </td>
-                            <td>${app.icon_url ? `<img src="${app.icon_url}" alt="" style="width:32px;height:32px;border-radius:6px;" crossorigin="anonymous">` : '—'}</td>
-                            <td><span class="app-name" style="cursor: pointer; color: #00d9ff;" data-app-index="${i}">${app.name || '—'}</span></td>
-                            <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="Click to copy">${(app.identifier || app.bundle_id || '—').substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
-                            <td><span class="version">${app.version || '—'}</span></td>
+                            <td>${app.icon_url ? `<img src="${app.icon_url}" alt="${escapeHtml(I18N.icon_alt.replace(/{name}/g, app.name || app.identifier || ''))}" width="32" height="32" style="width:32px;height:32px;border-radius:6px;" crossorigin="anonymous">` : I18N.cell_empty}</td>
+                            <td><span class="app-name" style="cursor: pointer; color: #00d9ff;" data-app-index="${i}">${app.name || I18N.cell_empty}</span></td>
+                            <td><span class="bundle-id" data-full="${app.identifier || app.bundle_id || ''}" title="${escapeHtml(I18N.bundle_title_copy)}">${(app.identifier || app.bundle_id || I18N.cell_empty).substring(0, 30)}${(app.identifier || app.bundle_id || '').length > 30 ? '...' : ''}</span></td>
+                            <td><span class="version">${app.version || I18N.cell_empty}</span></td>
                             <td>
                                 <span class="timestamp">
-                                    ${app.last_check_at ? new Date(app.last_check_at).toLocaleString('ru-RU', {
+                                    ${app.last_check_at ? new Date(app.last_check_at).toLocaleString(LOCALE_TAG, {
                                         year: 'numeric',
                                         month: '2-digit',
                                         day: '2-digit',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                    }) : '—'}
+                                    }) : I18N.cell_empty}
                                 </span>
                             </td>
                             <td>
                                 <span class="timestamp next-check-at">
-                                    ${app.next_check_at ? new Date(app.next_check_at).toLocaleString('ru-RU', {
+                                    ${app.next_check_at ? new Date(app.next_check_at).toLocaleString(LOCALE_TAG, {
                                         year: 'numeric',
                                         month: '2-digit',
                                         day: '2-digit',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                    }) : (app.is_active === false ? 'Выкл.' : '—')}
+                                    }) : (app.is_active === false ? I18N.next_off : I18N.cell_empty)}
                                 </span>
                             </td>
                             <td>
                                 <span class="last-error" title="${app.last_error || ''}">
-                                    ${app.last_error || '—'}
+                                    ${app.last_error || I18N.cell_empty}
                                 </span>
                             </td>
                         </tr>
@@ -708,7 +763,7 @@
                 }
                 
                 // Обновление времени
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString('ru-RU');
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString(LOCALE_TAG);
                 
             } catch (error) {
                 console.error('Error обновления дашборда:', error);
@@ -729,7 +784,7 @@
                     navigator.clipboard.writeText(fullId).then(() => {
                         // Показываем уведомление
                         const originalText = e.target.textContent;
-                        e.target.textContent = '✅ Copied!';
+                        e.target.textContent = '✅ ' + I18N.copied;
                         e.target.style.background = 'rgba(0, 255, 136, 0.2)';
                         setTimeout(() => {
                             e.target.textContent = originalText;
@@ -743,78 +798,83 @@
     </script>
 
     <!-- App Info Modal -->
-    <div class="modal-overlay" id="app-modal">
+    <div class="modal-overlay" id="app-modal" role="dialog" aria-modal="true" aria-labelledby="modal-name">
         <div class="app-modal">
-            <button class="modal-close" onclick="closeAppModal()">×</button>
+            <button type="button" class="modal-close" onclick="closeAppModal()" aria-label="{{ t('dash.js.modal.close') }}">×</button>
             <div class="modal-header">
-                <img src="" alt="" class="modal-icon" id="modal-icon">
+                <img src="" alt="" class="modal-icon" id="modal-icon" width="72" height="72">
                 <div class="modal-title">
-                    <h2 id="modal-name">App Name</h2>
+                    <h2 id="modal-name">{{ t('dash.modal.app_default') }}</h2>
                     <div class="modal-meta" id="modal-meta"></div>
-                    <button class="btn btn-secondary" onclick="forceCheckApp()" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;">🔄 Force Check</button>
+                    <button type="button" class="btn btn-secondary" onclick="forceCheckApp(this)" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;" aria-label="{{ t('dash.js.modal.check_aria') }}">🔄 {{ t('dash.js.check_now') }}</button>
                 </div>
             </div>
             <div class="modal-description" id="modal-description"></div>
             <div class="modal-section">
-                <h3>App Information</h3>
+                <h3>{{ t('dash.modal.section.info') }}</h3>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">Bundle ID</span>
-                    <span class="modal-info-value" id="modal-bundle-id">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.bundle') }}</span>
+                    <span class="modal-info-value" id="modal-bundle-id">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">Apple ID</span>
-                    <span class="modal-info-value" id="modal-app-id">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.apple_id') }}</span>
+                    <span class="modal-info-value" id="modal-app-id">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">Version</span>
-                    <span class="modal-info-value" id="modal-version">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.version') }}</span>
+                    <span class="modal-info-value" id="modal-version">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">Status</span>
-                    <span class="modal-info-value" id="modal-status">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.status') }}</span>
+                    <span class="modal-info-value" id="modal-status">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">Last Check</span>
-                    <span class="modal-info-value" id="modal-last-check">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.last_check') }}</span>
+                    <span class="modal-info-value" id="modal-last-check">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">След. проверка</span>
-                    <span class="modal-info-value" id="modal-next-check">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.next_check') }}</span>
+                    <span class="modal-info-value" id="modal-next-check">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">Last Error</span>
-                    <span class="modal-info-value" id="modal-last-error">—</span>
+                    <span class="modal-info-label">{{ t('dash.modal.last_error') }}</span>
+                    <span class="modal-info-value" id="modal-last-error">{{ t('common.dash') }}</span>
                 </div>
                 <div class="modal-info-row">
-                    <span class="modal-info-label">App Store</span>
-                    <span class="modal-info-value"><a href="#" id="modal-app-store-link" target="_blank" style="color: #00d9ff; text-decoration: none;">Open →</a></span>
+                    <span class="modal-info-label">{{ t('dash.modal.app_store') }}</span>
+                    <span class="modal-info-value"><a href="#" id="modal-app-store-link" target="_blank" rel="noopener noreferrer" style="color: #00d9ff; text-decoration: none;">{{ t('dash.modal.open_store') }}</a></span>
                 </div>
             </div>
 
             <div class="modal-section">
-                <h3>История проверок <span id="modal-history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
+                <h3>{{ t('dash.modal.section.history') }} <span id="modal-history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
+                <p style="margin-bottom: 10px; font-size: 0.85rem;">
+                    <label style="cursor: pointer; color: #c5cfdf;">
+                        <input type="checkbox" id="history-only-changes" onchange="reloadModalHistory()">
+                        {{ t('dash.modal.history_filter') }}
+                    </label>
+                </p>
                 <div id="modal-history-list" style="max-height: 300px; overflow-y: auto;">
-                    <div class="loader-container"><div class="loader"></div>Загрузка…</div>
+                    <div class="loader-container"><div class="loader"></div>{{ t('dash.modal.loading') }}</div>
                 </div>
             </div>
         </div>
     </div>
     
     <script>
-        // App Modal Functions
-        let currentAppId = null;
+        // App Modal Functions (currentAppId объявлен в предыдущем блоке скрипта)
 
 function closeAppModal() {
     document.getElementById('app-modal').classList.remove('active');
 }
 
-async function forceCheckApp() {
+async function forceCheckApp(btn) {
     if (!currentAppId) return;
-    
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '⏳ Checking...';
-    btn.disabled = true;
+    const el = btn || document.querySelector('#app-modal .btn-secondary');
+    if (!el) return;
+    const originalText = el.textContent;
+    el.textContent = '⏳ ' + (typeof I18N !== 'undefined' ? I18N.check_pending : '…');
+    el.disabled = true;
     
     try {
         const response = await fetch(`/api/v1/apps/${currentAppId}/check`, {
@@ -823,19 +883,19 @@ async function forceCheckApp() {
         });
         
         if (response.ok) {
-            btn.textContent = '✅ Checked!';
+            el.textContent = '✅ ' + I18N.check_done;
             setTimeout(() => {
-                btn.textContent = originalText;
-                btn.disabled = false;
+                el.textContent = originalText;
+                el.disabled = false;
                 location.reload();  // Reload to show new data
             }, 1500);
         } else {
-            btn.textContent = '❌ Error';
-            btn.disabled = false;
+            el.textContent = '❌ ' + I18N.status_error;
+            el.disabled = false;
         }
     } catch (error) {
-        btn.textContent = originalText;
-        btn.disabled = false;
+        el.textContent = originalText;
+        el.disabled = false;
         console.error('Force check error:', error);
     }
 }
@@ -872,7 +932,7 @@ async function forceCheckApp() {
                 if (fullId) {
                     navigator.clipboard.writeText(fullId).then(() => {
                         const originalText = e.target.textContent;
-                        e.target.textContent = '✅ Copied!';
+                        e.target.textContent = '✅ ' + I18N.copied;
                         e.target.style.background = 'rgba(0, 255, 136, 0.2)';
                         setTimeout(() => {
                             e.target.textContent = originalText;

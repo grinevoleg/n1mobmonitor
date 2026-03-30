@@ -1,7 +1,9 @@
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import cast, func, or_
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import List
 
 from app.database import get_db
@@ -14,6 +16,17 @@ from app.api.deps import get_admin_user
 from app.services.monitor import monitor_service
 
 router = APIRouter(prefix="/api/v1", tags=["API"])
+
+
+def _history_filter_only_changes(q, db: Session):
+    """Фильтр по audit.had_changes в JSON (SQLite JSON1 / PostgreSQL JSONB)."""
+    q = q.filter(CheckHistory.audit_json.isnot(None)).filter(CheckHistory.audit_json != "")
+    dialect = db.get_bind().dialect.name
+    if dialect == "postgresql":
+        j = cast(CheckHistory.audit_json, JSONB)
+        return q.filter(j["had_changes"].astext == "true")
+    jc = func.json_extract(CheckHistory.audit_json, "$.had_changes")
+    return q.filter(or_(jc == 1, jc == "true"))
 
 
 # === Apps ===
@@ -96,6 +109,10 @@ async def check_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_ad
 def get_app_history(
     app_id: int,
     limit: int = Query(100, ge=1, le=500),
+    only_changes: bool = Query(
+        False,
+        description="Только записи, где в audit было изменение карточки (had_changes)",
+    ),
     db: Session = Depends(get_db),
     _=Depends(get_admin_user),
 ):
@@ -106,14 +123,11 @@ def get_app_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Приложение не найдено"
         )
-    
-    rows = (
-        db.query(CheckHistory)
-        .filter(CheckHistory.app_id == app_id)
-        .order_by(CheckHistory.checked_at.desc())
-        .limit(limit)
-        .all()
-    )
+
+    q = db.query(CheckHistory).filter(CheckHistory.app_id == app_id)
+    if only_changes:
+        q = _history_filter_only_changes(q, db)
+    rows = q.order_by(CheckHistory.checked_at.desc()).limit(limit).all()
 
     result: List[CheckHistoryResponse] = []
     for h in rows:

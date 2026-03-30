@@ -1,7 +1,8 @@
+import asyncio
 import logging
 import random
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy.orm import Session
@@ -124,42 +125,67 @@ class MonitorService:
             self._running = False
             logger.info("Мониторинг остановлен")
     
+    async def _check_scheduled_app(self, app_id: int) -> None:
+        """Одна проверка по расписанию с отдельной сессией БД (для параллельного запуска)."""
+        db = SessionLocal()
+        try:
+            app = db.query(App).filter(App.id == app_id).first()
+            if not app or not app.is_active:
+                return
+            now = datetime.utcnow()
+            next_check = self._app_next_check.get(app.id)
+            if next_check and now < next_check:
+                return
+            await self._check_app(db, app, check_kind="scheduled")
+            db.refresh(app)
+            self._persist_next_check(db, app, datetime.utcnow())
+            logger.debug(
+                "Приложение %s проверено. Следующая проверка: %s",
+                app.bundle_id or app.app_id,
+                app.next_check_at,
+            )
+        except Exception as e:
+            logger.error("Ошибка проверки приложения id=%s: %s", app_id, e)
+        finally:
+            db.close()
+
     async def _check_all_apps(self):
         """Проверка всех активных приложений (только тех, что готовы к проверке)"""
         db = SessionLocal()
         try:
-            # Получаем все активные приложения
             apps = db.query(App).filter(App.is_active == True).all()
-            
             now = datetime.utcnow()
-            checked_count = 0
-
+            to_check: List[int] = []
             for app in apps:
-                # Проверяем, пришло ли время для этого приложения
                 next_check = self._app_next_check.get(app.id)
-                
                 if next_check and now < next_check:
-                    continue  # Ещё не время для проверки
-                
-                # Проверяем приложение
-                await self._check_app(db, app, check_kind="scheduled")
-                checked_count += 1
-
-                db.refresh(app)
-                self._persist_next_check(db, app, datetime.utcnow())
-
-                logger.debug(
-                    f"Приложение {app.bundle_id or app.app_id} проверено. "
-                    f"Следующая проверка: {app.next_check_at}"
-                )
-
-            if checked_count > 0:
-                logger.info(f"Проверено {checked_count} из {len(apps)} приложений")
-
+                    continue
+                to_check.append(app.id)
+            total_active = len(apps)
         except Exception as e:
-            logger.error(f"Ошибка при проверке приложений: {e}")
+            logger.error("Ошибка при подготовке проверки приложений: %s", e)
+            return
         finally:
             db.close()
+
+        if not to_check:
+            return
+
+        n = max(1, settings.monitor_lookup_concurrency)
+        sem = asyncio.Semaphore(n)
+
+        async def _bounded(aid: int) -> None:
+            async with sem:
+                await self._check_scheduled_app(aid)
+
+        results = await asyncio.gather(
+            *(_bounded(aid) for aid in to_check),
+            return_exceptions=True,
+        )
+        for r in results:
+            if isinstance(r, Exception):
+                logger.error("Ошибка параллельной проверки: %s", r)
+        logger.info("Проверено %s из %s активных приложений", len(to_check), total_active)
     
     async def _check_app(
         self,

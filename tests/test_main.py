@@ -75,6 +75,24 @@ def test_dashboard_page(client):
     response = client.get("/dashboard")
     assert response.status_code == 200
     assert b"App Store Monitor" in response.content
+    assert "Приложения".encode("utf-8") in response.content
+
+
+def test_dashboard_locale_en(client):
+    response = client.get("/dashboard", cookies={"locale": "en"})
+    assert response.status_code == 200
+    assert b"Applications" in response.content
+
+
+def test_set_locale_redirect(client):
+    response = client.get(
+        "/locale/en",
+        headers={"Referer": "http://testserver/dashboard"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.cookies.get("locale") == "en"
+    assert response.headers.get("location", "").endswith("/dashboard")
 
 
 def test_get_app_statuses_empty(client):
@@ -83,6 +101,12 @@ def test_get_app_statuses_empty(client):
     data = response.json()
     assert data["apps"] == []
     assert data["stats"]["total"] == 0
+
+
+def test_get_app_statuses_lang_en(client):
+    response = client.get("/api/v1/apps/statuses?lang=en")
+    assert response.status_code == 200
+    assert response.json().get("locale") == "en"
 
 
 def test_api_without_auth(client):
@@ -195,3 +219,66 @@ def test_get_app_history(client, db_session):
     data = response.json()
     assert len(data) == 1
     assert data[0]["status"] == "available"
+
+
+def test_get_app_history_only_changes(client, db_session):
+    from app.models import CheckHistory
+    from datetime import datetime
+    from app.services.change_log import build_audit_json
+
+    row = App(bundle_id="com.example.honly", is_active=True)
+    db_session.add(row)
+    db_session.commit()
+
+    snap = {
+        "last_status": "available",
+        "name": "App",
+        "version": "1.0",
+        "icon_url": None,
+        "description": None,
+        "bundle_id": None,
+        "app_id": None,
+    }
+    audit_no = build_audit_json(
+        snap, snap, check_kind="scheduled", api_status="available", api_message="ok"
+    )
+    snap_after = {**snap, "version": "2.0"}
+    audit_yes = build_audit_json(
+        snap, snap_after, check_kind="scheduled", api_status="available", api_message="ok"
+    )
+
+    db_session.add(
+        CheckHistory(
+            app_id=row.id,
+            status="available",
+            version="1.0",
+            message="m",
+            audit_json=audit_no,
+            checked_at=datetime.utcnow(),
+        )
+    )
+    db_session.add(
+        CheckHistory(
+            app_id=row.id,
+            status="available",
+            version="2.0",
+            message="m2",
+            audit_json=audit_yes,
+            checked_at=datetime.utcnow(),
+        )
+    )
+    db_session.commit()
+
+    r_all = client.get(f"/api/v1/apps/{row.id}/history?limit=10", auth=ADMIN_AUTH)
+    assert r_all.status_code == 200
+    assert len(r_all.json()) == 2
+
+    r_ch = client.get(
+        f"/api/v1/apps/{row.id}/history?limit=10&only_changes=true",
+        auth=ADMIN_AUTH,
+    )
+    assert r_ch.status_code == 200
+    body = r_ch.json()
+    assert len(body) == 1
+    assert body[0]["audit"] is not None
+    assert body[0]["audit"]["had_changes"] is True

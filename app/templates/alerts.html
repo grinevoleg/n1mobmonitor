@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ locale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Store Monitor - Журнал событий</title>
+    <title>{{ t('alerts.page.title') }}</title>
     <style>
         * {
             margin: 0;
@@ -11,11 +11,16 @@
             box-sizing: border-box;
         }
         
+        :root {
+            --text-primary: #e8ecf4;
+            --text-muted: #c5cfdf;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            color: #fff;
+            color: var(--text-primary);
         }
         
         .container {
@@ -38,7 +43,7 @@
         }
         
         .subtitle {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 1.1rem;
         }
         
@@ -50,7 +55,7 @@
         }
         
         .nav a {
-            color: #8892b0;
+            color: var(--text-muted);
             text-decoration: none;
             padding: 10px 20px;
             border-radius: 8px;
@@ -61,6 +66,35 @@
         .nav a:hover, .nav a.active {
             background: rgba(0, 217, 255, 0.2);
             color: #00d9ff;
+        }
+
+        .lang-switch {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .lang-switch a {
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .lang-switch a:hover, .lang-switch a.active {
+            background: rgba(0, 217, 255, 0.2);
+            color: #00d9ff;
+        }
+        .nav-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 30px;
         }
         
         .stats {
@@ -86,7 +120,7 @@
         }
         
         .stat-label {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -152,7 +186,7 @@
         
         th {
             background: rgba(255, 255, 255, 0.05);
-            color: #8892b0;
+            color: var(--text-muted);
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
@@ -203,7 +237,7 @@
         }
         
         .timestamp {
-            color: #8892b0;
+            color: var(--text-muted);
             font-size: 0.85rem;
         }
         
@@ -221,13 +255,13 @@
         
         .read-badge.read {
             background: rgba(255, 255, 255, 0.1);
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
         .filters {
@@ -243,7 +277,7 @@
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: transparent;
-            color: #8892b0;
+            color: var(--text-muted);
             cursor: pointer;
             font-size: 0.85rem;
             transition: all 0.3s;
@@ -283,7 +317,7 @@
         .loader-container {
             text-align: center;
             padding: 40px;
-            color: #8892b0;
+            color: var(--text-muted);
         }
         
         .loader {
@@ -312,74 +346,80 @@
 <body>
     <div class="container">
         <header>
-            <h1>🔔 Журнал событий</h1>
-            <p class="subtitle">App Store Monitor - Алерты и уведомления</p>
+            <h1>🔔 {{ t('alerts.hero.title') }}</h1>
+            <p class="subtitle">{{ t('alerts.page.subtitle') }}</p>
         </header>
         
-        <nav class="nav">
-            <a href="/dashboard">📊 Дашборд</a>
-            <a href="/alerts" class="active">🔔 Алерты</a>
-            <a href="/settings">⚙️ Настройки</a>
+        <div class="nav-wrap">
+        <nav class="nav" aria-label="{{ t('a11y.nav_main') }}">
+            <a href="/dashboard">📊 {{ t('nav.dashboard') }}</a>
+            <a href="/alerts" class="active" aria-current="page">🔔 {{ t('nav.alerts') }}</a>
+            <a href="/settings">⚙️ {{ t('nav.settings') }}</a>
         </nav>
+        <div class="lang-switch" role="group" aria-label="{{ t('nav.lang') }}">
+            <a href="/locale/ru" class="{{ 'active' if locale == 'ru' else '' }}">{{ t('lang.ru') }}</a>
+            <a href="/locale/en" class="{{ 'active' if locale == 'en' else '' }}">{{ t('lang.en') }}</a>
+        </div>
+        </div>
         
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-value" id="stat-total">0</div>
-                <div class="stat-label">Всего</div>
+                <div class="stat-label">{{ t('alerts.stats.total') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-unread" style="color: #00d9ff;">0</div>
-                <div class="stat-label">Непрочитанные</div>
+                <div class="stat-label">{{ t('alerts.stats.unread') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-status" style="color: #ff4757;">0</div>
-                <div class="stat-label">Статус</div>
+                <div class="stat-label">{{ t('alerts.stats.status') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-version" style="color: #00d9ff;">0</div>
-                <div class="stat-label">Версии</div>
+                <div class="stat-label">{{ t('alerts.stats.versions') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-error" style="color: #ffa502;">0</div>
-                <div class="stat-label">Ошибки</div>
+                <div class="stat-label">{{ t('alerts.stats.errors') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="stat-meta" style="color: #a55eea;">0</div>
-                <div class="stat-label">Метаданные</div>
+                <div class="stat-label">{{ t('alerts.stats.metadata') }}</div>
             </div>
         </div>
         
         <div class="alerts-table">
             <div class="alerts-header">
-                <h2>События</h2>
+                <h2>{{ t('alerts.header.events') }}</h2>
                 <div>
-                    <button class="btn btn-secondary" onclick="markВсеAsПрочитано()">Прочитать все</button>
+                    <button type="button" class="btn btn-secondary" onclick="markAllAsRead()">{{ t('alerts.btn.read_all') }}</button>
                 </div>
             </div>
             
-            <div class="filters">
-                <button class="filter-btn active" data-filter="all">Все</button>
-                <button class="filter-btn" data-filter="unread">Непрочитанные</button>
-                <button class="filter-btn" data-filter="status_change">Статус</button>
-                <button class="filter-btn" data-filter="version_change">Версии</button>
-                <button class="filter-btn" data-filter="metadata">Метаданные</button>
-                <button class="filter-btn" data-filter="error">Ошибки</button>
+            <div class="filters" role="toolbar" aria-label="{{ t('alerts.toolbar.aria') }}">
+                <button type="button" class="filter-btn active" data-filter="all" aria-pressed="true">{{ t('alerts.filter.all') }}</button>
+                <button type="button" class="filter-btn" data-filter="unread" aria-pressed="false">{{ t('alerts.filter.unread') }}</button>
+                <button type="button" class="filter-btn" data-filter="status_change" aria-pressed="false">{{ t('alerts.filter.status') }}</button>
+                <button type="button" class="filter-btn" data-filter="version_change" aria-pressed="false">{{ t('alerts.filter.versions') }}</button>
+                <button type="button" class="filter-btn" data-filter="metadata" aria-pressed="false">{{ t('alerts.filter.metadata') }}</button>
+                <button type="button" class="filter-btn" data-filter="error" aria-pressed="false">{{ t('alerts.filter.errors') }}</button>
             </div>
             
-            <table>
+            <table role="table" aria-label="{{ t('alerts.table.aria') }}">
                 <thead>
                     <tr>
-                        <th>Тип</th>
-                        <th>Приложение</th>
-                        <th>Сообщение</th>
-                        <th>Время</th>
-                        <th>Статус</th>
-                        <th>Действия</th>
+                        <th scope="col">{{ t('alerts.col.type') }}</th>
+                        <th scope="col">{{ t('alerts.col.app') }}</th>
+                        <th scope="col">{{ t('alerts.col.message') }}</th>
+                        <th scope="col">{{ t('alerts.col.time') }}</th>
+                        <th scope="col">{{ t('alerts.col.read_state') }}</th>
+                        <th scope="col">{{ t('alerts.col.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody id="alerts-body">
                     <tr>
-                        <td colspan="6" class="empty-state">Загрузка...</td>
+                        <td colspan="6" class="empty-state">{{ t('alerts.empty.loading') }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -388,6 +428,12 @@
     
 
     <script>
+        const I18N = {{ i18n | tojson }};
+        const LOCALE_TAG = "{{ locale_tag }}";
+        function alertTypeLabel(type) {
+            const k = 'type_' + type;
+            return I18N[k] || type;
+        }
         // Авторизация
         function getAuthHeader() {
             const auth = localStorage.getItem('adminAuth');
@@ -413,7 +459,7 @@
 
         let currentFilter = 'all';
         let alertsData = [];
-        
+
         // Загрузка алертов
         async function loadAlerts() {
             try {
@@ -462,21 +508,21 @@
             }
             
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Нет событий для отображения</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">' + I18N.empty_filtered + '</td></tr>';
                 return;
             }
             
             tbody.innerHTML = filtered.map(alert => `
                 <tr class="${alert.is_read ? '' : 'unread'}">
                     <td>
-                        <div class="alert-type">
-                            <span class="alert-emoji">${alert.alert_emoji}</span>
-                            <span>${alert.alert_type}</span>
+                        <div class="alert-type" role="group" aria-label="${I18N.type_group_aria}">
+                            <span class="alert-emoji" aria-hidden="true">${alert.alert_emoji}</span>
+                            <span>${alertTypeLabel(alert.alert_type)}</span>
                         </div>
                     </td>
                     <td>
-                        <div class="app-name">${alert.app_name || '—'}</div>
-                        <div class="app-identifier">${alert.app_identifier || '—'}</div>
+                        <div class="app-name">${alert.app_name || I18N.cell_dash}</div>
+                        <div class="app-identifier">${alert.app_identifier || I18N.cell_dash}</div>
                     </td>
                     <td>
                         <div class="alert-message">${alert.message}</div>
@@ -486,12 +532,12 @@
                     </td>
                     <td>
                         <span class="read-badge ${alert.is_read ? 'read' : 'unread'}">
-                            ${alert.is_read ? 'Прочитано' : 'Новое'}
+                            ${alert.is_read ? I18N.read_read : I18N.read_new}
                         </span>
                     </td>
                     <td>
-                        ${!alert.is_read ? `<button class="action-btn read" onclick="markAsПрочитано(${alert.id})">✓</button>` : ''}
-                        <button class="action-btn delete" onclick="deleteAlert(${alert.id})">✕</button>
+                        ${!alert.is_read ? `<button type="button" class="action-btn read" onclick="markAsRead(${alert.id})" aria-label="${I18N.mark_read_aria}">✓</button>` : ''}
+                        <button type="button" class="action-btn delete" onclick="deleteAlert(${alert.id})" aria-label="${I18N.delete_aria}">✕</button>
                     </td>
                 </tr>
             `).join('');
@@ -500,7 +546,7 @@
         // Форматирование даты
         function formatDate(dateString) {
             const date = new Date(dateString);
-            return date.toLocaleString('ru-RU', {
+            return date.toLocaleString(LOCALE_TAG, {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
@@ -510,7 +556,7 @@
         }
         
         // Отметить как прочитанное
-        async function markAsПрочитано(alertId) {
+        async function markAsRead(alertId) {
             try {
                 await fetch(`/api/v1/alerts/${alertId}/read`, { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
@@ -520,7 +566,7 @@
         }
         
         // Отметить все как прочитанное
-        async function markВсеAsПрочитано() {
+        async function markAllAsRead() {
             try {
                 await fetch('/api/v1/alerts/read-all', { method: 'POST', headers: { 'Authorization': getAuthHeader() } });
                 loadAlerts();
@@ -531,7 +577,7 @@
         
         // Удалить алерт
         async function deleteAlert(alertId) {
-            if (!confirm('Удалить это событие?')) return;
+            if (!confirm(I18N.confirm_delete)) return;
             
             try {
                 await fetch(`/api/v1/alerts/${alertId}`, { method: 'DELETE', headers: { 'Authorization': getAuthHeader() } });
@@ -544,8 +590,12 @@
         // Фильтры
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-pressed', 'false');
+                });
                 btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
                 currentFilter = btn.dataset.filter;
                 renderAlerts();
             });

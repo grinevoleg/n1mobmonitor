@@ -5,6 +5,8 @@ import logging
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,90 +35,117 @@ def get_random_user_agent() -> str:
 
 class AppStoreClient:
     """Клиент для iTunes Lookup API"""
-    
+
     BASE_URL = "https://itunes.apple.com"
     TIMEOUT = 30  # секунд
     MAX_RETRIES = 3
     BASE_DELAY = 60  # секунд (1 минута)
-    
+
+    def __init__(self):
+        self._client: Optional[httpx.AsyncClient] = None
+        self._client_lock = asyncio.Lock()
+
+    async def startup(self) -> None:
+        """Один долгоживущий клиент на процесс (вызывать из lifespan)."""
+        async with self._client_lock:
+            if self._client is not None:
+                return
+            lim = max(1, settings.http_max_connections)
+            self._client = httpx.AsyncClient(
+                timeout=self.TIMEOUT,
+                limits=httpx.Limits(
+                    max_keepalive_connections=min(10, lim),
+                    max_connections=lim,
+                ),
+            )
+
+    async def shutdown(self) -> None:
+        async with self._client_lock:
+            if self._client is not None:
+                await self._client.aclose()
+                self._client = None
+
+    async def _ensure_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            await self.startup()
+        assert self._client is not None
+        return self._client
+
     async def _make_request(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Выполнение запроса с ротацией User-Agent и обработкой 429
-        
+
         Args:
             params: Параметры запроса
-            
+
         Returns:
             dict с результатом или ошибкой
         """
         last_error = None
-        
+        client = await self._ensure_client()
+
         for attempt in range(self.MAX_RETRIES):
             try:
-                # Случайный User-Agent для каждого запроса
                 user_agent = get_random_user_agent()
-                
-                async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
-                    response = await client.get(
-                        f"{self.BASE_URL}/lookup",
-                        params=params,
-                        headers={"User-Agent": user_agent}
+                response = await client.get(
+                    f"{self.BASE_URL}/lookup",
+                    params=params,
+                    headers={"User-Agent": user_agent},
+                )
+
+                if response.status_code == 429:
+                    retry_after = int(
+                        response.headers.get("Retry-After", self.BASE_DELAY * (2**attempt))
                     )
-                    
-                    # Обработка 429 Too Many Requests
-                    if response.status_code == 429:
-                        retry_after = int(response.headers.get("Retry-After", self.BASE_DELAY * (2 ** attempt)))
-                        logger.warning(f"Получен 429. Ожидание {retry_after} секунд...")
-                        await asyncio.sleep(retry_after)
-                        continue
-                    
-                    response.raise_for_status()
-                    data = response.json()
-                    return data
-                    
+                    logger.warning("Получен 429. Ожидание %s секунд...", retry_after)
+                    await asyncio.sleep(retry_after)
+                    continue
+
+                response.raise_for_status()
+                return response.json()
+
             except httpx.TimeoutException as e:
                 last_error = f"Превышено время ожидания: {str(e)}"
-                logger.warning(f"Таймаут запроса (попытка {attempt + 1}): {last_error}")
-                
+                logger.warning("Таймаут запроса (попытка %s): %s", attempt + 1, last_error)
+
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
-                    retry_after = self.BASE_DELAY * (2 ** attempt)
-                    logger.warning(f"Получен 429. Ожидание {retry_after} секунд...")
+                    retry_after = self.BASE_DELAY * (2**attempt)
+                    logger.warning("Получен 429. Ожидание %s секунд...", retry_after)
                     await asyncio.sleep(retry_after)
                     continue
                 last_error = f"HTTP ошибка: {str(e)}"
                 break
-                
+
             except httpx.HTTPError as e:
                 last_error = f"HTTP ошибка: {str(e)}"
-                logger.warning(f"Ошибка запроса (попытка {attempt + 1}): {last_error}")
-                
+                logger.warning("Ошибка запроса (попытка %s): %s", attempt + 1, last_error)
+
             except Exception as e:
                 last_error = f"Неизвестная ошибка: {str(e)}"
-                logger.error(f"Неожиданная ошибка: {last_error}")
+                logger.error("Неожиданная ошибка: %s", last_error)
                 break
-        
-        # Все попытки исчерпаны
+
         return {"error": last_error or "Неизвестная ошибка после всех попыток"}
-    
+
     async def lookup_by_bundle_id(self, bundle_id: str) -> Dict[str, Any]:
         """
         Поиск приложения по Bundle ID
-        
+
         Returns:
             dict с информацией о приложении или ошибкой
         """
         try:
             data = await self._make_request({"bundleId": bundle_id})
-            
+
             if "error" in data:
                 return {
                     "status": "error",
                     "name": None,
                     "version": None,
-                    "message": data["error"]
+                    "message": data["error"],
                 }
-                
+
             if data.get("resultCount", 0) > 0:
                 app_data = data["results"][0]
                 return {
@@ -131,43 +160,42 @@ class AppStoreClient:
                     "currency": app_data.get("currency"),
                     "genre": app_data.get("primaryGenreName"),
                     "release_date": app_data.get("releaseDate"),
-                    "message": "Приложение найдено"
+                    "message": "Приложение найдено",
                 }
-            else:
-                return {
-                    "status": "unavailable",
-                    "name": None,
-                    "version": None,
-                    "message": f"Приложение с Bundle ID '{bundle_id}' не найдено"
-                }
-                    
+            return {
+                "status": "unavailable",
+                "name": None,
+                "version": None,
+                "message": f"Приложение с Bundle ID '{bundle_id}' не найдено",
+            }
+
         except Exception as e:
-            logger.error(f"Ошибка lookup_by_bundle_id: {e}")
+            logger.error("Ошибка lookup_by_bundle_id: %s", e)
             return {
                 "status": "error",
                 "name": None,
                 "version": None,
-                "message": f"Неизвестная ошибка: {str(e)}"
+                "message": f"Неизвестная ошибка: {str(e)}",
             }
-    
+
     async def lookup_by_app_id(self, app_id: int) -> Dict[str, Any]:
         """
         Поиск приложения по App ID
-        
+
         Returns:
             dict с информацией о приложении или ошибкой
         """
         try:
             data = await self._make_request({"id": app_id})
-            
+
             if "error" in data:
                 return {
                     "status": "error",
                     "name": None,
                     "version": None,
-                    "message": data["error"]
+                    "message": data["error"],
                 }
-                
+
             if data.get("resultCount", 0) > 0:
                 app_data = data["results"][0]
                 return {
@@ -182,23 +210,22 @@ class AppStoreClient:
                     "currency": app_data.get("currency"),
                     "genre": app_data.get("primaryGenreName"),
                     "release_date": app_data.get("releaseDate"),
-                    "message": "Приложение найдено"
+                    "message": "Приложение найдено",
                 }
-            else:
-                return {
-                    "status": "unavailable",
-                    "name": None,
-                    "version": None,
-                    "message": f"Приложение с ID '{app_id}' не найдено"
-                }
-                    
+            return {
+                "status": "unavailable",
+                "name": None,
+                "version": None,
+                "message": f"Приложение с ID '{app_id}' не найдено",
+            }
+
         except Exception as e:
-            logger.error(f"Ошибка lookup_by_app_id: {e}")
+            logger.error("Ошибка lookup_by_app_id: %s", e)
             return {
                 "status": "error",
                 "name": None,
                 "version": None,
-                "message": f"Неизвестная ошибка: {str(e)}"
+                "message": f"Неизвестная ошибка: {str(e)}",
             }
 
 

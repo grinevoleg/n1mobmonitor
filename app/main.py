@@ -12,6 +12,7 @@ from app.api.alerts import router as alerts_router
 from app.api.settings import router as settings_router
 from app.api.telegram_users import router as telegram_users_router
 from app.services.monitor import monitor_service
+from app.services.app_store import app_store_client
 from app.services.telegram_bot import telegram_bot_service
 
 # Настройка логирования
@@ -41,6 +42,7 @@ def init_default_settings():
             "google_credentials": settings.google_credentials or "",
             "spreadsheet_id": settings.spreadsheet_id or "",
             "sheet_name": settings.sheet_name,
+            "alert_webhook_url": "",
         }
         
         for key, value in default_settings.items():
@@ -77,6 +79,8 @@ async def lifespan(app: FastAPI):
     # Инициализация настроек по умолчанию
     init_default_settings()
 
+    await app_store_client.startup()
+
     # Запуск фонового мониторинга
     monitor_service.start()
     
@@ -100,6 +104,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Остановка приложения...")
     monitor_service.stop()
+    await app_store_client.shutdown()
 
 
 # Создание приложения
