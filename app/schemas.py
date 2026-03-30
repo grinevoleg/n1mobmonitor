@@ -70,26 +70,6 @@ class CheckHistoryResponse(BaseModel):
         from_attributes = True
 
 
-# === API Key Schemas ===
-
-class APIKeyCreate(BaseModel):
-    """Схема для создания API ключа"""
-    description: Optional[str] = Field(None, max_length=256)
-
-
-class APIKeyResponse(BaseModel):
-    """Схема ответа с API ключом"""
-    id: int
-    key: str
-    description: Optional[str] = None
-    is_active: bool
-    created_at: datetime
-    last_used_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
-
-
 # === Dashboard Schemas ===
 
 class DashboardAppStatus(BaseModel):

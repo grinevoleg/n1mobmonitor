@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,8 +38,6 @@ def init_default_settings():
             "alert_email": "",
             "telegram_bot_token": "",
             "telegram_chat_id": "",
-            "admin_username": os.getenv("ADMIN_USERNAME", "admin"),
-            "admin_password": os.getenv("ADMIN_PASSWORD", "admin"),
             "google_credentials": settings.google_credentials or "",
             "spreadsheet_id": settings.spreadsheet_id or "",
             "sheet_name": settings.sheet_name,

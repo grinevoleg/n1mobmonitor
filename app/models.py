@@ -59,22 +59,6 @@ class CheckHistory(Base):
     app = relationship("App", back_populates="check_history")
 
 
-class APIKey(Base):
-    """Модель API ключа для доступа к сервису"""
-
-    __tablename__ = "api_keys"
-
-    id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True, index=True, nullable=False)
-    description = Column(String, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_used_at = Column(DateTime, nullable=True)
-    request_count = Column(Integer, default=0)
-    hourly_request_count = Column(Integer, default=0)
-    hourly_reset_at = Column(DateTime, nullable=True)
-
-
 class Setting(Base):
     """Модель настроек сервиса"""
 

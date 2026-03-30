@@ -234,18 +234,6 @@
             </table>
         </div>
 
-        <!-- API ключи -->
-        <div class="settings-section">
-            <h2>🔑 API ключи</h2>
-            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-                <input type="text" id="new_key_desc" placeholder="Описание ключа" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #fff;">
-                <button class="btn btn-primary" onclick="createКлюч()">Создать ключ</button>
-            </div>
-            <table>
-                <thead><tr><th>Ключ</th><th>Описание</th><th>Создан</th><th>Действия</th></tr></thead>
-                <tbody id="keys-table"><tr><td colspan="4" class="empty-state">Загрузка...</td></tr></tbody>
-            </table>
-        </div>
     </div>
 
     <script>
@@ -371,7 +359,6 @@
             document.getElementById('smtp_password').value = settings.smtp_password || '';
             document.getElementById('alert_email').value = settings.alert_email || '';
             loadApps();
-            loadКлючs();
         }
 
         async function saveSettings(data, successMsg) {
@@ -526,54 +513,6 @@
             } else {
                 showToast('Ошибка', 'Не удалось удалить приложение', 'error');
             }
-        }
-
-        async function loadКлючs() {
-            if (!checkAuth()) return;
-            showLoader('keys-table');
-            const response = await fetch('/api/v1/settings/keys', { headers: { 'Authorization': getAuthHeader() } });
-            if (!response.ok) return;
-            const keys = await response.json();
-            document.getElementById('keys-table').innerHTML = keys.map(key => `
-                <tr>
-                    <td><code style="background: rgba(0,217,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">${key.key.substring(0, 20)}...</code></td>
-                    <td>${key.description || '—'}</td>
-                    <td>${new Date(key.created_at).toLocaleDateString()}</td>
-                    <td><button class="action-btn btn-danger" onclick="confirmRevokeКлюч('${key.key}')">Отозвать</button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="4" class="empty-state">Нет ключей</td></tr>';
-        }
-
-        function confirmRevokeКлюч(key) {
-            showModal('Отозвать ключ', 'Этот ключ перестанет работать. Продолжить?', () => revokeКлюч(key));
-        }
-
-        async function createКлюч() {
-            if (!checkAuth()) return;
-            const description = document.getElementById('new_key_desc').value;
-            const response = await fetch(`/api/v1/settings/keys?description=${encodeURIComponent(description)}`, {
-                method: 'POST',
-                headers: { 'Authorization': getAuthHeader() }
-            });
-            if (response.ok) {
-                const key = await response.json();
-                showToast('Ключ создан', `Сохраните ваш ключ: ${key.key}`, 'success');
-                document.getElementById('new_key_desc').value = '';
-                loadКлючs();
-            } else {
-                const err = await response.json();
-                showToast('Ошибка', err.detail, 'error');
-            }
-        }
-
-        async function revokeКлюч(key) {
-            if (!checkAuth()) return;
-            await fetch(`/api/v1/settings/keys/${encodeURIComponent(key)}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': getAuthHeader() }
-            });
-            showToast('Успешно', 'Ключ отозван', 'success');
-            loadКлючs();
         }
 
         // Инициализация

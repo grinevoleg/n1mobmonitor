@@ -3,14 +3,12 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database import get_db
-from app.models import App, CheckHistory, APIKey
+from app.models import App, CheckHistory
 from app.schemas import (
-    AppCreate, AppResponse, AppStatusResponse,
+    AppCreate, AppResponse,
     CheckHistoryResponse,
-    APIKeyCreate, APIKeyResponse
 )
-from app.api.deps import get_api_key, get_admin_user
-from app.utils.security import create_api_key, revoke_api_key
+from app.api.deps import get_admin_user
 from app.services.monitor import monitor_service
 
 router = APIRouter(prefix="/api/v1", tags=["API"])
@@ -123,30 +121,3 @@ def delete_app(app_id: int, db: Session = Depends(get_db), _=Depends(get_admin_u
     db.commit()
     
     return None
-
-
-# === API Keys ===
-
-@router.post("/keys", response_model=APIKeyResponse, status_code=status.HTTP_201_CREATED)
-def create_key(key_data: APIKeyCreate, db: Session = Depends(get_db), _=Depends(get_admin_user)):
-    """Создать новый API ключ"""
-    db_key = create_api_key(db, key_data.description)
-    return db_key
-
-
-@router.delete("/keys/{key}", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_key(key: str, db: Session = Depends(get_db), _=Depends(get_admin_user)):
-    """Отозвать API ключ"""
-    if not revoke_api_key(db, key):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API ключ не найден"
-        )
-    return None
-
-
-@router.get("/keys", response_model=List[APIKeyResponse])
-def list_keys(db: Session = Depends(get_db), _=Depends(get_admin_user)):
-    """Получить список всех API ключей"""
-    keys = db.query(APIKey).order_by(APIKey.created_at.desc()).all()
-    return keys

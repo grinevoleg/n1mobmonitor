@@ -6,16 +6,9 @@ from datetime import datetime
 from app.database import get_db
 from app.models import TelegramUser, UserNotificationSettings
 from app.schemas import TelegramUserResponse, TelegramUserUpdate, UserNotificationSettingsResponse, UserNotificationSettingsUpdate
-from app.api.deps import get_api_key, get_admin_user
+from app.api.deps import get_admin_user
 
 router = APIRouter(prefix="/api/v1/telegram-users", tags=["Telegram Users"])
-
-
-def check_admin(db: Session, api_key_user):
-    """Проверка что пользователь admin"""
-    # Для простоты проверяем только API key
-    # В реальной реализации нужно связать API key с Telegram user
-    pass
 
 
 @router.get("", response_model=List[TelegramUserResponse])
@@ -155,7 +148,7 @@ def update_notification_settings(
     if settings_data.notify_unavailable is not None:
         settings.notify_unavailable = settings_data.notify_unavailable
     
-    settings.updated_at = db.func.now()
+    settings.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(settings)
     

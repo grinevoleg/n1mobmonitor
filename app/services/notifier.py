@@ -12,6 +12,16 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Типы алертов по «карточке» приложения — уважают notify_version_change
+METADATA_ALERT_TYPES = frozenset({
+    "version_change",
+    "name_change",
+    "description_change",
+    "icon_change",
+    "bundle_id_change",
+    "app_id_change",
+})
+
 
 def get_approved_users_for_alert(db: Session, alert_type: str) -> List[Tuple[TelegramUser, UserNotificationSettings]]:
     """
@@ -36,17 +46,20 @@ def get_approved_users_for_alert(db: Session, alert_type: str) -> List[Tuple[Tel
         
         settings = user.notification_settings
         
-        # Проверка подписки на тип уведомления
         notify_map = {
             "status_change": settings.notify_status_change,
             "version_change": settings.notify_version_change,
             "error": settings.notify_error,
             "app_added": settings.notify_app_added,
             "unavailable": settings.notify_unavailable,
-            "test": True  # Тестовые всегда отправляем
+            "test": True,
         }
-        
-        if notify_map.get(alert_type, False):
+
+        subscribed = notify_map.get(alert_type)
+        if subscribed is None and alert_type in METADATA_ALERT_TYPES:
+            subscribed = settings.notify_version_change
+
+        if subscribed:
             result.append((user, settings))
     
     return result
@@ -59,9 +72,12 @@ def get_setting(db: Session, key: str, default: str = "") -> str:
 
 
 def get_all_settings(db: Session) -> Dict[str, str]:
-    """Получение всех настроек"""
+    """Получение всех настроек (без учётных данных админа — они только в .env)"""
+    skip = frozenset({"admin_username", "admin_password"})
     settings_dict = {}
     for setting in db.query(Setting).all():
+        if setting.key in skip:
+            continue
         settings_dict[setting.key] = setting.value
     return settings_dict
 
@@ -119,12 +135,17 @@ async def send_email_alert(
         
         # Формирование темы и тела письма
         emoji = {
-            "status_change": "🔴", 
-            "version_change": "🔵", 
+            "status_change": "🔴",
+            "version_change": "🔵",
+            "name_change": "🟣",
+            "description_change": "📄",
+            "icon_change": "🖼",
+            "bundle_id_change": "📦",
+            "app_id_change": "🆔",
             "error": "🟡",
             "app_added": "🆕",
             "unavailable": "🔴",
-            "test": "⚪"
+            "test": "⚪",
         }.get(alert_type, "⚪")
         subject = f"{emoji} App Store Monitor: {alert_type} - {app_name}"
         
@@ -316,18 +337,27 @@ async def send_telegram_alert_to_user(
         
         # Формирование сообщения (такое же как в send_telegram_alert)
         emoji = {
-            "status_change": "🔴", 
-            "version_change": "🔵", 
+            "status_change": "🔴",
+            "version_change": "🔵",
+            "name_change": "🟣",
+            "description_change": "📄",
+            "icon_change": "🖼",
+            "bundle_id_change": "📦",
+            "app_id_change": "🆔",
             "error": "🟡",
             "app_added": "🆕",
             "unavailable": "🔴",
-            "test": "⚪"
+            "test": "⚪",
         }.get(alert_type, "⚪")
         
-        # Парсинг значений
         old_data = json.loads(old_value) if old_value else {}
         new_data = json.loads(new_value) if new_value else {}
-        
+
+        def _plain(x) -> str:
+            if x is None:
+                return ""
+            return str(x).replace("`", "'").replace("*", " ")[:600]
+
         message = f"{emoji} *App Store Monitor*\n\n"
         
         if alert_type == "app_added":
@@ -369,6 +399,35 @@ async def send_telegram_alert_to_user(
             message += f"*Приложение:* `{app_name}`\n"
             message += f"*ID:* `{app_identifier}`\n"
             message += f"*Статус:* ❌ Не найдено в App Store\n"
+        elif alert_type == "name_change":
+            message += "*🟣 Изменение названия*\n\n"
+            message += f"Приложение: {_plain(app_name)}\nID: {_plain(app_identifier)}\n"
+            if old_data.get("name"):
+                message += f"Было: {_plain(old_data.get('name'))}\n"
+            if new_data.get("name"):
+                message += f"Стало: {_plain(new_data.get('name'))}\n"
+        elif alert_type == "description_change":
+            message += "*📄 Изменение описания*\n\n"
+            message += f"Приложение: {_plain(app_name)}\nID: {_plain(app_identifier)}\n"
+            od = _plain(old_data.get("description"))[:200]
+            nd = _plain(new_data.get("description"))[:200]
+            if od:
+                message += f"Фрагмент было: {od}\n"
+            if nd:
+                message += f"Фрагмент стало: {nd}\n"
+        elif alert_type == "icon_change":
+            message += "*🖼 Изменилась иконка*\n\n"
+            message += f"Приложение: {_plain(app_name)}\nID: {_plain(app_identifier)}\n"
+        elif alert_type == "bundle_id_change":
+            message += "*📦 Изменение Bundle ID*\n\n"
+            message += f"Приложение: {_plain(app_name)}\n"
+            message += f"Было: {_plain(old_data.get('bundle_id'))}\n"
+            message += f"Стало: {_plain(new_data.get('bundle_id'))}\n"
+        elif alert_type == "app_id_change":
+            message += "*🆔 Изменение Apple ID*\n\n"
+            message += f"Приложение: {_plain(app_name)}\n"
+            message += f"Было: {_plain(old_data.get('app_id'))}\n"
+            message += f"Стало: {_plain(new_data.get('app_id'))}\n"
         elif alert_type == "test":
             message += f"*⚪ Тестовое уведомление*\n\n"
             message += f"Это тестовое сообщение от App Store Monitor.\n"

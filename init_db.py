@@ -14,7 +14,7 @@ def check_tables_exist():
     inspector = inspect(engine)
     tables = inspector.get_table_names()
     
-    required_tables = ['apps', 'check_history', 'api_keys', 'settings', 'alerts']
+    required_tables = ['apps', 'check_history', 'settings', 'alerts']
     
     print("📊 Проверка таблиц...")
     print(f"Найдено таблиц: {len(tables)}")
@@ -46,8 +46,6 @@ def init_settings():
             "alert_email": "",
             "telegram_bot_token": "",
             "telegram_chat_id": "",
-            "admin_username": "admin",
-            "admin_password": "admin",
         }
         
         created_count = 0
@@ -99,10 +97,7 @@ def main():
         print("✅ Настройки инициализированы\n")
     
     print("✨ Инициализация завершена успешно!")
-    print("\n📝 Данные для входа:")
-    print("   Логин: admin")
-    print("   Пароль: admin")
-    print("\n⚠️  Не забудьте сменить пароль в настройках!")
+    print("\n📝 Вход в веб-интерфейс: задайте ADMIN_USERNAME и ADMIN_PASSWORD в .env")
 
 
 if __name__ == "__main__":

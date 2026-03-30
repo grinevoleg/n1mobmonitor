@@ -73,7 +73,19 @@ def get_alert_stats(
     by_type = {}
     by_type_unread = {}
     
-    for alert_type in ["status_change", "version_change", "name_change", "error", "unavailable"]:
+    alert_types = [
+        "status_change",
+        "version_change",
+        "name_change",
+        "description_change",
+        "icon_change",
+        "bundle_id_change",
+        "app_id_change",
+        "error",
+        "unavailable",
+        "app_added",
+    ]
+    for alert_type in alert_types:
         by_type[alert_type] = db.query(Alert).filter(Alert.alert_type == alert_type).count()
         by_type_unread[alert_type] = db.query(Alert).filter(
             Alert.alert_type == alert_type,

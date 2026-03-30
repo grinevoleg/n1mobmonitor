@@ -17,9 +17,6 @@ class Settings(BaseSettings):
     spreadsheet_id: Optional[str] = None
     sheet_name: str = "AppStoreMonitor"
     
-    # Rate limiting
-    rate_limit: int = 100
-    
     # Monitoring interval (minutes)
     monitor_interval: int = 30  # Увеличено с 10 до 30 для безопасности
     

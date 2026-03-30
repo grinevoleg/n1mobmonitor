@@ -18,9 +18,17 @@ def migrate_database():
     db = SessionLocal()
     try:
         inspector = inspect(engine)
-        
+        table_names = inspector.get_table_names()
+
+        # Удаление устаревшей таблицы API-ключей
+        if "api_keys" in table_names:
+            logger.info("Dropping legacy api_keys table...")
+            db.execute(text("DROP TABLE IF EXISTS api_keys"))
+            db.commit()
+            logger.info("✅ api_keys table removed")
+
         # Миграция для apps (icon_url, description)
-        if "apps" in inspector.get_table_names():
+        if "apps" in table_names:
             apps_columns = {col['name']: col for col in inspector.get_columns("apps")}
             
             if "icon_url" not in apps_columns:

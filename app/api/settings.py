@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import Dict
 import logging
 
 from app.database import get_db
-from app.models import App, APIKey, Setting
-from app.schemas import SettingResponse, SettingsUpdate, AppUpdate, APIKeyResponse
-from app.api.deps import get_api_key, get_admin_user
-from app.utils.security import generate_api_key, create_api_key as create_key_service
+from app.models import App, Setting
+from app.schemas import SettingsUpdate, AppUpdate
+from app.api.deps import get_admin_user
 from app.services.notifier import test_email_notification, test_telegram_notification, get_all_settings
 
 logger = logging.getLogger(__name__)
@@ -30,9 +29,11 @@ def update_settings(
     db: Session = Depends(get_db),
     _=Depends(get_admin_user)
 ):
-    """Обновить настройки"""
+    """Обновить настройки (логин/пароль админа только через .env, не через API)"""
     result = {}
     for key, value in settings_data.settings.items():
+        if key in ("admin_username", "admin_password"):
+            continue
         setting = update_setting(db, key, str(value))
         result[key] = setting.value
     return result
@@ -191,43 +192,5 @@ def delete_app(
         raise HTTPException(status_code=404, detail="Приложение не найдено")
 
     db.delete(app)
-    db.commit()
-    return None
-
-
-# === Управление API ключами ===
-
-@router.get("/keys", response_model=List[APIKeyResponse])
-def get_keys(
-    db: Session = Depends(get_db),
-    _=Depends(get_admin_user)
-):
-    """Получить список всех API ключей"""
-    keys = db.query(APIKey).order_by(APIKey.created_at.desc()).all()
-    return keys
-
-
-@router.post("/keys", response_model=APIKeyResponse, status_code=201)
-def create_key(
-    description: str = "",
-    db: Session = Depends(get_db),
-    _=Depends(get_admin_user)
-):
-    """Создать новый API ключ"""
-    return create_key_service(db, description if description else None)
-
-
-@router.delete("/keys/{key}", status_code=204)
-def revoke_key(
-    key: str,
-    db: Session = Depends(get_db),
-    _=Depends(get_admin_user)
-):
-    """Отозвать API ключ"""
-    db_key = db.query(APIKey).filter(APIKey.key == key).first()
-    if not db_key:
-        raise HTTPException(status_code=404, detail="API ключ не найден")
-    
-    db_key.is_active = False
     db.commit()
     return None

@@ -5,13 +5,15 @@ from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy.orm import Session
-from sqlalchemy import select
-
 from app.database import SessionLocal
 from app.models import App, CheckHistory
 from app.services.app_store import app_store_client
 from app.services.sheets import sheets_writer
-from app.services.alert_detector import check_and_create_alerts
+from app.services.alert_detector import (
+    check_and_create_alerts,
+    snapshot_from_app,
+    format_changes_line,
+)
 from app.services.notifier import send_alert
 from app.config import settings
 
@@ -131,7 +133,8 @@ class MonitorService:
             is_new_app: флаг нового приложения
         """
         try:
-            # Запрос к Apple API по bundle_id или app_id
+            snapshot_before = snapshot_from_app(app)
+
             if app.bundle_id:
                 result = await app_store_client.lookup_by_bundle_id(app.bundle_id)
             elif app.app_id:
@@ -139,10 +142,8 @@ class MonitorService:
             else:
                 result = {"status": "error", "name": None, "version": None, "message": "Не указан bundle_id или app_id"}
 
-            # Сохраняем предыдущий статус
-            old_status = app.last_status
+            old_status = snapshot_before["last_status"]
 
-            # Обновляем информацию о приложении
             app.last_check_at = datetime.utcnow()
             app.last_status = result["status"]
             app.last_error = result["message"] if result["status"] == "error" else None
@@ -152,7 +153,6 @@ class MonitorService:
                 app.version = result["version"]
                 app.icon_url = result.get("icon_url")
                 app.description = result.get("description")
-                # Обновляем bundle_id если он не был указан и не существует в другой записи
                 if not app.bundle_id and result.get("bundle_id"):
                     existing = db.query(App).filter(
                         App.bundle_id == result["bundle_id"],
@@ -160,18 +160,24 @@ class MonitorService:
                     ).first()
                     if not existing:
                         app.bundle_id = result["bundle_id"]
+                if result.get("app_id") and not app.app_id:
+                    app.app_id = str(result["app_id"])
 
-            # Создаём запись в истории
+            snapshot_after = snapshot_from_app(app)
+            history_msg = result["message"]
+            changes_line = format_changes_line(snapshot_before, snapshot_after)
+            if changes_line:
+                history_msg = f"{history_msg} | Изменения: {changes_line}"
+
             history = CheckHistory(
                 app_id=app.id,
                 status=result["status"],
                 version=result.get("version"),
-                message=result["message"],
-                checked_at=datetime.utcnow()
+                message=history_msg,
+                checked_at=datetime.utcnow(),
             )
             db.add(history)
 
-            # Логирование изменения статуса в Google Sheets
             if old_status != result["status"]:
                 sheets_writer.log_status_change(
                     app_id=app.id,
@@ -179,7 +185,7 @@ class MonitorService:
                     old_status=old_status,
                     new_status=result["status"],
                     version=result.get("version"),
-                    message=result["message"]
+                    message=result["message"],
                 )
                 logger.info(
                     f"Статус приложения {app.bundle_id or app.app_id} изменился: "
@@ -188,42 +194,67 @@ class MonitorService:
 
             db.commit()
             logger.info(f"Проверено {app.bundle_id or app.app_id}: {result['status']}")
-            
-            # Проверка на изменения и создание алертов (после коммита чтобы app имел обновлённые данные)
-            alerts = check_and_create_alerts(db, app, result, is_new_app=is_new_app)
-            db.commit()  # Коммит алертов
-            
-            # Отправка уведомлений для каждого алерта
+
+            alerts = check_and_create_alerts(
+                db, app, result, snapshot_before, snapshot_after, is_new_app=is_new_app
+            )
+            db.commit()
+
             if alerts:
                 app_identifier = app.bundle_id or app.app_id or str(app.id)
                 app_name = app.name or app_identifier
-                
+
                 for alert in alerts:
                     await send_alert(
                         alert_type=alert.alert_type,
                         app_name=app_name,
                         app_identifier=app_identifier,
                         old_value=alert.old_value,
-                        new_value=alert.new_value
+                        new_value=alert.new_value,
                     )
 
         except Exception as e:
             logger.error(f"Ошибка проверки {app.bundle_id or app.app_id}: {e}")
             db.rollback()
+            db.refresh(app)
+            snapshot_before = snapshot_from_app(app)
 
-            # Записываем ошибку
             app.last_check_at = datetime.utcnow()
             app.last_status = "error"
             app.last_error = str(e)
 
+            snapshot_after = snapshot_from_app(app)
+            err_result = {"status": "error", "message": str(e)}
+            history_msg = str(e)
+            cl = format_changes_line(snapshot_before, snapshot_after)
+            if cl:
+                history_msg = f"{history_msg} | Изменения: {cl}"
+
             history = CheckHistory(
                 app_id=app.id,
                 status="error",
-                message=str(e),
-                checked_at=datetime.utcnow()
+                message=history_msg,
+                checked_at=datetime.utcnow(),
             )
             db.add(history)
             db.commit()
+
+            alerts = check_and_create_alerts(
+                db, app, err_result, snapshot_before, snapshot_after, is_new_app=False
+            )
+            db.commit()
+
+            if alerts:
+                app_identifier = app.bundle_id or app.app_id or str(app.id)
+                app_name = app.name or app_identifier
+                for alert in alerts:
+                    await send_alert(
+                        alert_type=alert.alert_type,
+                        app_name=app_name,
+                        app_identifier=app_identifier,
+                        old_value=alert.old_value,
+                        new_value=alert.new_value,
+                    )
     
     async def check_single_app(self, app_id: int, is_new_app: bool = False) -> dict:
         """

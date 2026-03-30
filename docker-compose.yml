@@ -31,7 +31,6 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
       MONITOR_INTERVAL: ${MONITOR_INTERVAL:-30}
       MONITOR_JITTER: ${MONITOR_JITTER:-5}
-      RATE_LIMIT: ${RATE_LIMIT:-100}
       # Email уведомления (опционально)
       EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
