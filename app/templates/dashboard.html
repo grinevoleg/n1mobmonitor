@@ -442,6 +442,7 @@
                         <th>Bundle ID</th>
                         <th>Version</th>
                         <th>Last Check</th>
+                        <th>Next Check</th>
                         <th>Error</th>
                     </tr>
                 </thead>
@@ -454,12 +455,18 @@
                                 <span>{{ get_status_display(app.last_status) }}</span>
                             </div>
                         </td>
-                        <td><span class="bundle-id">{{ app.bundle_id or (app.app_id if app.app_id else 'ID:' + app.id|string) }}</span></td>
+                        <td>{% if app.icon_url %}<img src="{{ app.icon_url }}" alt="" style="width:32px;height:32px;border-radius:6px;">{% else %}—{% endif %}</td>
                         <td>{{ app.name or '—' }}</td>
+                        <td><span class="bundle-id" data-full="{{ app.bundle_id or app.app_id or '' }}">{{ app.bundle_id or (app.app_id if app.app_id else 'ID:' + app.id|string) }}</span></td>
                         <td><span class="version">{{ app.version or '—' }}</span></td>
                         <td>
                             <span class="timestamp">
-                                {{ app.last_check_at.strftime('%Y-%m-%d %H:%M') if app.last_check_at else 'Not Checked' }}
+                                {{ app.last_check_at.strftime('%Y-%m-%d %H:%M') if app.last_check_at else '—' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="timestamp next-check-at">
+                                {{ app.next_check_at.strftime('%Y-%m-%d %H:%M') if app.next_check_at else '—' }}
                             </span>
                         </td>
                         <td>
@@ -482,13 +489,7 @@
         <div class="refresh-info">
             <p>Auto-refresh every <span>60 seconds</span> | Last updated: <span id="last-update">—</span></p>
             <p style="margin-top: 8px; font-size: 0.8rem;">Version: <span style="color: #00d9ff; font-weight: bold;">{{ version }}</span></p>
-
-            <div class="modal-section">
-                <h3>History <span id="history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
-                <div id="history-list" style="max-height: 300px; overflow-y: auto;">
-                    <div class="loader-container"><div class="loader"></div>Loading...</div>
-                </div>
-            </div>
+            <p style="margin-top: 10px; font-size: 0.8rem; color: #8892b0;">История проверок — в карточке приложения (клик по названию в таблице).</p>
         </div>
     </div>
     
@@ -546,7 +547,10 @@
             document.getElementById('modal-app-id').textContent = app.app_id || '—';
             document.getElementById('modal-version').textContent = app.version || '—';
             document.getElementById('modal-status').textContent = app.status_display || app.last_status || '—';
-            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString() : '—';
+            document.getElementById('modal-last-check').textContent = app.last_check_at ? new Date(app.last_check_at).toLocaleString('ru-RU') : '—';
+            document.getElementById('modal-next-check').textContent = app.next_check_at
+                ? new Date(app.next_check_at).toLocaleString('ru-RU')
+                : (app.is_active === false ? 'Выкл.' : '—');
             document.getElementById('modal-last-error').textContent = app.last_error || '—';
             
             // App Store Link
@@ -565,8 +569,8 @@
         }
 
                 async function loadAppHistory(appId) {
-            const historyList = document.getElementById('history-list');
-            const historyCount = document.getElementById('history-count');
+            const historyList = document.getElementById('modal-history-list');
+            const historyCount = document.getElementById('modal-history-count');
             
             try {
                 const response = await fetch(`/api/v1/apps/${appId}/history?limit=30`, {
@@ -599,6 +603,11 @@
                         'unavailable': '🔴',
                         'error': '🟡'
                     }[item.status] || '⚪';
+                    const statusDisplay = {
+                        available: 'Доступно',
+                        unavailable: 'Недоступно',
+                        error: 'Ошибка'
+                    }[item.status] || item.status;
                     
                     const date = new Date(item.checked_at).toLocaleDateString() + ' ' + new Date(item.checked_at).toLocaleTimeString();
                     const audit = item.audit;
@@ -621,7 +630,7 @@
                     return `
                         <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; flex-wrap: wrap;">
-                                <span>${statusEmoji} <strong style="color: #fff;">${escapeHtml(item.status)}</strong>${kindHtml}</span>
+                                <span>${statusEmoji} <strong style="color: #fff;">${escapeHtml(statusDisplay)}</strong>${kindHtml}</span>
                                 <span style="color: #8892b0; font-size: 0.85rem;">${date}</span>
                             </div>
                             <div style="color: #a8b2d1; font-size: 0.9rem;">${escapeHtml(item.message || 'No message')}</div>
@@ -675,7 +684,18 @@
                                         day: '2-digit',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                    }) : 'Not Checked'}
+                                    }) : '—'}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="timestamp next-check-at">
+                                    ${app.next_check_at ? new Date(app.next_check_at).toLocaleString('ru-RU', {
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    }) : (app.is_active === false ? 'Выкл.' : '—')}
                                 </span>
                             </td>
                             <td>
@@ -758,6 +778,10 @@
                     <span class="modal-info-value" id="modal-last-check">—</span>
                 </div>
                 <div class="modal-info-row">
+                    <span class="modal-info-label">След. проверка</span>
+                    <span class="modal-info-value" id="modal-next-check">—</span>
+                </div>
+                <div class="modal-info-row">
                     <span class="modal-info-label">Last Error</span>
                     <span class="modal-info-value" id="modal-last-error">—</span>
                 </div>
@@ -768,9 +792,9 @@
             </div>
 
             <div class="modal-section">
-                <h3>History <span id="history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
-                <div id="history-list" style="max-height: 300px; overflow-y: auto;">
-                    <div class="loader-container"><div class="loader"></div>Loading...</div>
+                <h3>История проверок <span id="modal-history-count" style="color: #00d9ff; font-size: 0.8rem;"></span></h3>
+                <div id="modal-history-list" style="max-height: 300px; overflow-y: auto;">
+                    <div class="loader-container"><div class="loader"></div>Загрузка…</div>
                 </div>
             </div>
         </div>

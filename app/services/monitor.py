@@ -55,6 +55,27 @@ class MonitorService:
         jitter = max(0, min(jitter, base_interval))
         random_jitter = random.randint(-jitter, jitter)
         return max(5, base_interval + random_jitter)
+
+    def clear_next_schedule(self, app_id: int) -> None:
+        """Снять приложение с расписания (выключен мониторинг)."""
+        self._app_next_check.pop(app_id, None)
+
+    def prime_app_schedule(self, app_id: int) -> None:
+        """Следующая фоновая проверка как можно скорее (включили мониторинг)."""
+        self._app_next_check[app_id] = datetime.utcnow() - timedelta(minutes=1)
+
+    def _persist_next_check(self, db: Session, app: App, from_time: datetime) -> None:
+        """Записать в БД и в память время следующей проверки."""
+        if not app.is_active:
+            app.next_check_at = None
+            self._app_next_check.pop(app.id, None)
+            db.commit()
+            return
+        interval = self._get_next_check_interval(app.id)
+        next_dt = from_time + timedelta(minutes=interval)
+        self._app_next_check[app.id] = next_dt
+        app.next_check_at = next_dt
+        db.commit()
     
     def start(self):
         """Запуск планировщика"""
@@ -67,9 +88,12 @@ class MonitorService:
         db = SessionLocal()
         try:
             apps = db.query(App).filter(App.is_active == True).all()
+            now = datetime.utcnow()
             for app in apps:
-                # Устанавливаем время в прошлое, чтобы проверка произошла сразу
-                self._app_next_check[app.id] = datetime.utcnow() - timedelta(minutes=1)
+                if app.next_check_at and app.next_check_at > now:
+                    self._app_next_check[app.id] = app.next_check_at
+                else:
+                    self._app_next_check[app.id] = now - timedelta(minutes=1)
             logger.info(f"Инициализировано {len(apps)} приложений для мониторинга")
         finally:
             db.close()
@@ -120,12 +144,14 @@ class MonitorService:
                 # Проверяем приложение
                 await self._check_app(db, app, check_kind="scheduled")
                 checked_count += 1
-                
-                # Планируем следующую проверку с рандомизацией
-                interval = self._get_next_check_interval(app.id)
-                self._app_next_check[app.id] = now + timedelta(minutes=interval)
-                
-                logger.debug(f"Приложение {app.bundle_id or app.app_id} проверено. Следующая проверка через {interval} мин")
+
+                db.refresh(app)
+                self._persist_next_check(db, app, datetime.utcnow())
+
+                logger.debug(
+                    f"Приложение {app.bundle_id or app.app_id} проверено. "
+                    f"Следующая проверка: {app.next_check_at}"
+                )
 
             if checked_count > 0:
                 logger.info(f"Проверено {checked_count} из {len(apps)} приложений")
@@ -310,6 +336,10 @@ class MonitorService:
             await self._check_app(
                 db, app, is_new_app=is_new_app, check_kind="manual"
             )
+
+            db.refresh(app)
+            if app.is_active:
+                self._persist_next_check(db, app, datetime.utcnow())
 
             return {
                 "status": app.last_status,

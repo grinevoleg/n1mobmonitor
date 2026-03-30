@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Dict
@@ -8,6 +10,7 @@ from app.models import App, Setting
 from app.schemas import SettingsUpdate, AppUpdate
 from app.api.deps import get_admin_user
 from app.services.notifier import test_email_notification, test_telegram_notification, get_all_settings
+from app.services.monitor import monitor_service
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +175,14 @@ def update_app(
     if app_data.app_id is not None:
         app.app_id = str(app_data.app_id)
     if app_data.is_active is not None:
+        was_active = app.is_active
         app.is_active = app_data.is_active
+        if not app.is_active:
+            app.next_check_at = None
+            monitor_service.clear_next_schedule(app_id)
+        elif app.is_active and not was_active:
+            monitor_service.prime_app_schedule(app_id)
+            app.next_check_at = datetime.utcnow() + timedelta(minutes=1)
 
     db.commit()
     db.refresh(app)

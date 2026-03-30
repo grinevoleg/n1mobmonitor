@@ -35,6 +35,7 @@ class App(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_check_at = Column(DateTime, nullable=True)
+    next_check_at = Column(DateTime, nullable=True, index=True)
     last_status = Column(String, nullable=True)  # "available", "unavailable", "error"
     last_error = Column(Text, nullable=True)
 

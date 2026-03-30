@@ -43,6 +43,12 @@ def migrate_database():
                 db.commit()
                 logger.info("✅ description column added")
 
+            if "next_check_at" not in apps_columns:
+                logger.info("Adding next_check_at column to apps table...")
+                db.execute(text("ALTER TABLE apps ADD COLUMN next_check_at TIMESTAMP"))
+                db.commit()
+                logger.info("✅ next_check_at column added")
+
         # История проверок: структурированный аудит (снимки + список изменений)
         if "check_history" in table_names:
             ch_columns = {col["name"]: col for col in inspector.get_columns("check_history")}

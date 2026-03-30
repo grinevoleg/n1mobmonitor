@@ -36,6 +36,7 @@ class AppResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_check_at: Optional[datetime] = None
+    next_check_at: Optional[datetime] = None
     last_status: Optional[str] = None
     last_error: Optional[str] = None
 
