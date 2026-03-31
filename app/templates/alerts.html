@@ -481,11 +481,13 @@
                 document.getElementById('stat-total').textContent = stats.total;
                 document.getElementById('stat-unread').textContent = stats.unread;
                 document.getElementById('stat-status').textContent = stats.by_type.status_change || 0;
-                document.getElementById('stat-version').textContent = stats.by_type.version_change || 0;
+                document.getElementById('stat-version').textContent =
+                    (stats.by_type.version_change || 0) + (stats.by_type.store_release_change || 0);
                 document.getElementById('stat-error').textContent = stats.by_type.error || 0;
                 const bt = stats.by_type;
-                const metaSum = (bt.version_change || 0) + (bt.name_change || 0) + (bt.description_change || 0)
-                    + (bt.icon_change || 0) + (bt.bundle_id_change || 0) + (bt.app_id_change || 0);
+                const metaSum = (bt.version_change || 0) + (bt.store_release_change || 0) + (bt.name_change || 0)
+                    + (bt.description_change || 0) + (bt.icon_change || 0) + (bt.bundle_id_change || 0)
+                    + (bt.app_id_change || 0);
                 document.getElementById('stat-meta').textContent = metaSum;
             } catch (error) {
                 console.error('Ошибка загрузки статистики:', error);
@@ -498,7 +500,7 @@
             
             let filtered = alertsData;
             
-            const META_TYPES = ['version_change', 'name_change', 'description_change', 'icon_change', 'bundle_id_change', 'app_id_change'];
+            const META_TYPES = ['version_change', 'store_release_change', 'name_change', 'description_change', 'icon_change', 'bundle_id_change', 'app_id_change'];
             if (currentFilter === 'unread') {
                 filtered = alertsData.filter(a => !a.is_read);
             } else if (currentFilter === 'metadata') {

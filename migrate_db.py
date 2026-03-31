@@ -49,6 +49,12 @@ def migrate_database():
                 db.commit()
                 logger.info("✅ next_check_at column added")
 
+            if "store_release_date" not in apps_columns:
+                logger.info("Adding store_release_date column to apps table...")
+                db.execute(text("ALTER TABLE apps ADD COLUMN store_release_date VARCHAR(64)"))
+                db.commit()
+                logger.info("✅ store_release_date column added")
+
         # История проверок: структурированный аудит (снимки + список изменений)
         if "check_history" in table_names:
             ch_columns = {col["name"]: col for col in inspector.get_columns("check_history")}

@@ -19,6 +19,7 @@ FIELD_LABELS = {
     "last_status": "Статус",
     "name": "Название",
     "version": "Версия",
+    "store_release_date": "Дата релиза (iTunes)",
     "icon_url": "Иконка (URL)",
     "description": "Описание",
     "bundle_id": "Bundle ID",
@@ -46,6 +47,7 @@ def snapshot_from_app(app: App) -> Dict[str, Any]:
         "last_status": app.last_status,
         "name": _norm_str(app.name),
         "version": _norm_str(app.version),
+        "store_release_date": _norm_str(getattr(app, "store_release_date", None)),
         "icon_url": _norm_str(app.icon_url),
         "description": _norm_desc(app.description),
         "bundle_id": _norm_str(app.bundle_id),
@@ -104,6 +106,8 @@ def format_changes_line(before: Dict[str, Any], after: Dict[str, Any]) -> Option
             parts.append(f"статус: {c['old']!s}→{c['new']!s}")
         elif f == "version":
             parts.append(f"версия: {c['old']!s}→{c['new']!s}")
+        elif f == "store_release_date":
+            parts.append("дата релиза iTunes изменена")
         elif f == "name":
             parts.append("название изменено")
         elif f == "icon_url":

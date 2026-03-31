@@ -76,6 +76,7 @@ def get_alert_stats(
     alert_types = [
         "status_change",
         "version_change",
+        "store_release_change",
         "name_change",
         "description_change",
         "icon_change",

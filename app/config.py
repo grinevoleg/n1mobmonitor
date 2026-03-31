@@ -28,6 +28,10 @@ class Settings(BaseSettings):
 
     # Лимит соединений общего httpx.AsyncClient для iTunes Lookup
     http_max_connections: int = 20
+
+    # Витрины iTunes Lookup (через запятую, ISO 3166-1 alpha-2). Несколько кодов
+    # снижают риск «старый» версии в одном регионе при свежем релизе в другом.
+    itunes_lookup_countries: str = "us,ru,gb,de"
     
     # Admin credentials
     admin_username: str = "admin"

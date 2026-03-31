@@ -18,6 +18,7 @@ WEBHOOK_TIMEOUT = 12.0
 # Типы алертов по «карточке» приложения — уважают notify_version_change
 METADATA_ALERT_TYPES = frozenset({
     "version_change",
+    "store_release_change",
     "name_change",
     "description_change",
     "icon_change",
@@ -140,6 +141,7 @@ async def send_email_alert(
         emoji = {
             "status_change": "🔴",
             "version_change": "🔵",
+            "store_release_change": "📅",
             "name_change": "🟣",
             "description_change": "📄",
             "icon_change": "🖼",
@@ -402,6 +404,7 @@ async def send_telegram_alert_to_user(
         emoji = {
             "status_change": "🔴",
             "version_change": "🔵",
+            "store_release_change": "📅",
             "name_change": "🟣",
             "description_change": "📄",
             "icon_change": "🖼",
@@ -442,6 +445,16 @@ async def send_telegram_alert_to_user(
                 message += f"*Старая версия:* `{old_data['version']}`\n"
             if new_data.get('version'):
                 message += f"*Новая версия:* `{new_data['version']}`\n"
+        elif alert_type == "store_release_change":
+            message += "*📅 Обновление даты релиза в iTunes*\n\n"
+            message += f"*Приложение:* `{app_name}`\n"
+            message += f"*ID:* `{app_identifier}`\n"
+            if old_data.get("store_release_date"):
+                message += f"*Было:* `{old_data['store_release_date']}`\n"
+            if new_data.get("store_release_date"):
+                message += f"*Стало:* `{new_data['store_release_date']}`\n"
+            if new_data.get("version"):
+                message += f"*Версия в API:* `{new_data['version']}`\n"
         elif alert_type == "status_change":
             message += f"*🔴 Изменение статуса*\n\n"
             message += f"*Приложение:* `{app_name}`\n"

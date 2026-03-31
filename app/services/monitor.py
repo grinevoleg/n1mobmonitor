@@ -219,6 +219,7 @@ class MonitorService:
             if result["status"] == "available":
                 app.name = result["name"]
                 app.version = result["version"]
+                app.store_release_date = result.get("store_release_date")
                 app.icon_url = result.get("icon_url")
                 app.description = result.get("description")
                 if not app.bundle_id and result.get("bundle_id"):

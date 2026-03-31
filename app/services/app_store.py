@@ -1,9 +1,9 @@
+import asyncio
 import httpx
 import random
-import asyncio
+import re
 import logging
-from typing import Optional, Dict, Any
-from datetime import datetime
+from typing import Optional, Dict, Any, List, Tuple
 
 from app.config import settings
 
@@ -31,6 +31,61 @@ USER_AGENTS = [
 def get_random_user_agent() -> str:
     """Возвращает случайный User-Agent из пула"""
     return random.choice(USER_AGENTS)
+
+
+def _parse_lookup_countries(raw: str) -> List[str]:
+    out = [c.strip().lower() for c in (raw or "").split(",") if c.strip()]
+    return out if out else ["us"]
+
+
+def _version_sort_key(version: Optional[str]) -> Tuple[int, ...]:
+    """Сравнение версий вроде 1.0.2 без внешних зависимостей."""
+    if not version:
+        return (0,)
+    nums = [int(x) for x in re.findall(r"\d+", str(version))]
+    return tuple(nums) if nums else (0,)
+
+
+def _norm_store_release_date(app_data: Dict[str, Any]) -> Optional[str]:
+    v = app_data.get("currentVersionReleaseDate")
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s if s else None
+
+
+def _available_payload(raw: Dict[str, Any], country: str) -> Dict[str, Any]:
+    return {
+        "status": "available",
+        "name": raw.get("trackName"),
+        "version": raw.get("version"),
+        "icon_url": raw.get("artworkUrl512"),
+        "description": raw.get("description"),
+        "bundle_id": raw.get("bundleId"),
+        "app_id": raw.get("trackId"),
+        "price": raw.get("price", 0),
+        "currency": raw.get("currency"),
+        "genre": raw.get("primaryGenreName"),
+        "release_date": raw.get("releaseDate"),
+        "store_release_date": _norm_store_release_date(raw),
+        "message": "Приложение найдено",
+        "_country": country,
+        "_raw": raw,
+    }
+
+
+def _pick_best_available(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Берём витрину с наибольшей версией; при равенстве — более позднюю дату релиза текущей версии."""
+    ok = [c for c in candidates if c.get("status") == "available" and c.get("_raw")]
+    if not ok:
+        raise ValueError("no available candidates")
+
+    def key(c: Dict[str, Any]) -> Tuple[Tuple[int, ...], str]:
+        vk = _version_sort_key(c.get("version"))
+        rd = c.get("store_release_date") or ""
+        return (vk, rd)
+
+    return max(ok, key=key)
 
 
 class AppStoreClient:
@@ -128,47 +183,91 @@ class AppStoreClient:
 
         return {"error": last_error or "Неизвестная ошибка после всех попыток"}
 
+    def _strip_internal(self, d: Dict[str, Any]) -> Dict[str, Any]:
+        out = {k: v for k, v in d.items() if not k.startswith("_")}
+        return out
+
+    async def _lookup_country_bundle(self, bundle_id: str, country: str) -> Dict[str, Any]:
+        data = await self._make_request({"bundleId": bundle_id, "country": country})
+        if "error" in data:
+            return {"status": "error", "message": data["error"], "_country": country}
+        if data.get("resultCount", 0) > 0:
+            return _available_payload(data["results"][0], country)
+        return {
+            "status": "unavailable",
+            "name": None,
+            "version": None,
+            "message": f"Приложение с Bundle ID '{bundle_id}' не найдено ({country})",
+            "_country": country,
+        }
+
+    async def _lookup_country_id(self, app_id: int, country: str) -> Dict[str, Any]:
+        data = await self._make_request({"id": app_id, "country": country})
+        if "error" in data:
+            return {"status": "error", "message": data["error"], "_country": country}
+        if data.get("resultCount", 0) > 0:
+            return _available_payload(data["results"][0], country)
+        return {
+            "status": "unavailable",
+            "name": None,
+            "version": None,
+            "message": f"Приложение с ID '{app_id}' не найдено ({country})",
+            "_country": country,
+        }
+
     async def lookup_by_bundle_id(self, bundle_id: str) -> Dict[str, Any]:
         """
-        Поиск приложения по Bundle ID
-
-        Returns:
-            dict с информацией о приложении или ошибкой
+        Поиск по Bundle ID по нескольким витринам; выбирается ответ с максимальной версией.
         """
+        countries = _parse_lookup_countries(settings.itunes_lookup_countries)
         try:
-            data = await self._make_request({"bundleId": bundle_id})
+            parts = await asyncio.gather(
+                *[self._lookup_country_bundle(bundle_id, c) for c in countries],
+                return_exceptions=True,
+            )
+            candidates: List[Dict[str, Any]] = []
+            errors: List[str] = []
+            for i, p in enumerate(parts):
+                cc = countries[i] if i < len(countries) else "?"
+                if isinstance(p, BaseException):
+                    logger.warning("lookup bundle %s country=%s: %s", bundle_id, cc, p)
+                    errors.append(f"{cc}: {p}")
+                    continue
+                if p.get("status") == "error":
+                    errors.append(f"{cc}: {p.get('message', 'error')}")
+                candidates.append(p)
 
-            if "error" in data:
+            available = [c for c in candidates if c.get("status") == "available"]
+            if available:
+                best = _pick_best_available(available)
+                country = best.get("_country", "?")
+                logger.info(
+                    "iTunes bundle=%s → version=%s release_date=%s (витрина %s из %s)",
+                    bundle_id,
+                    best.get("version"),
+                    best.get("store_release_date"),
+                    country,
+                    ",".join(countries),
+                )
+                return self._strip_internal(best)
+
+            # Нет ни одной витрины с available
+            unavail = [c for c in candidates if c.get("status") == "unavailable"]
+            if unavail and len(unavail) == len(candidates):
                 return {
-                    "status": "error",
+                    "status": "unavailable",
                     "name": None,
                     "version": None,
-                    "message": data["error"],
+                    "message": f"Приложение с Bundle ID '{bundle_id}' не найдено (витрины: {','.join(countries)})",
                 }
 
-            if data.get("resultCount", 0) > 0:
-                app_data = data["results"][0]
-                return {
-                    "status": "available",
-                    "name": app_data.get("trackName"),
-                    "version": app_data.get("version"),
-                    "icon_url": app_data.get("artworkUrl512"),  # 512x512 icon
-                    "description": app_data.get("description"),
-                    "bundle_id": app_data.get("bundleId"),
-                    "app_id": app_data.get("trackId"),
-                    "price": app_data.get("price", 0),
-                    "currency": app_data.get("currency"),
-                    "genre": app_data.get("primaryGenreName"),
-                    "release_date": app_data.get("releaseDate"),
-                    "message": "Приложение найдено",
-                }
+            err_msg = errors[0] if errors else "Нет ответа от iTunes Lookup"
             return {
-                "status": "unavailable",
+                "status": "error",
                 "name": None,
                 "version": None,
-                "message": f"Приложение с Bundle ID '{bundle_id}' не найдено",
+                "message": err_msg,
             }
-
         except Exception as e:
             logger.error("Ошибка lookup_by_bundle_id: %s", e)
             return {
@@ -179,46 +278,55 @@ class AppStoreClient:
             }
 
     async def lookup_by_app_id(self, app_id: int) -> Dict[str, Any]:
-        """
-        Поиск приложения по App ID
-
-        Returns:
-            dict с информацией о приложении или ошибкой
-        """
+        """Поиск по App ID по нескольким витринам."""
+        countries = _parse_lookup_countries(settings.itunes_lookup_countries)
         try:
-            data = await self._make_request({"id": app_id})
+            parts = await asyncio.gather(
+                *[self._lookup_country_id(app_id, c) for c in countries],
+                return_exceptions=True,
+            )
+            candidates: List[Dict[str, Any]] = []
+            errors: List[str] = []
+            for i, p in enumerate(parts):
+                cc = countries[i] if i < len(countries) else "?"
+                if isinstance(p, BaseException):
+                    logger.warning("lookup id %s country=%s: %s", app_id, cc, p)
+                    errors.append(f"{cc}: {p}")
+                    continue
+                if p.get("status") == "error":
+                    errors.append(f"{cc}: {p.get('message', 'error')}")
+                candidates.append(p)
 
-            if "error" in data:
+            available = [c for c in candidates if c.get("status") == "available"]
+            if available:
+                best = _pick_best_available(available)
+                country = best.get("_country", "?")
+                logger.info(
+                    "iTunes id=%s → version=%s release_date=%s (витрина %s из %s)",
+                    app_id,
+                    best.get("version"),
+                    best.get("store_release_date"),
+                    country,
+                    ",".join(countries),
+                )
+                return self._strip_internal(best)
+
+            unavail = [c for c in candidates if c.get("status") == "unavailable"]
+            if unavail and len(unavail) == len(candidates):
                 return {
-                    "status": "error",
+                    "status": "unavailable",
                     "name": None,
                     "version": None,
-                    "message": data["error"],
+                    "message": f"Приложение с ID '{app_id}' не найдено (витрины: {','.join(countries)})",
                 }
 
-            if data.get("resultCount", 0) > 0:
-                app_data = data["results"][0]
-                return {
-                    "status": "available",
-                    "name": app_data.get("trackName"),
-                    "version": app_data.get("version"),
-                    "icon_url": app_data.get("artworkUrl512"),  # 512x512 icon
-                    "description": app_data.get("description"),
-                    "bundle_id": app_data.get("bundleId"),
-                    "app_id": app_data.get("trackId"),
-                    "price": app_data.get("price", 0),
-                    "currency": app_data.get("currency"),
-                    "genre": app_data.get("primaryGenreName"),
-                    "release_date": app_data.get("releaseDate"),
-                    "message": "Приложение найдено",
-                }
+            err_msg = errors[0] if errors else "Нет ответа от iTunes Lookup"
             return {
-                "status": "unavailable",
+                "status": "error",
                 "name": None,
                 "version": None,
-                "message": f"Приложение с ID '{app_id}' не найдено",
+                "message": err_msg,
             }
-
         except Exception as e:
             logger.error("Ошибка lookup_by_app_id: %s", e)
             return {

@@ -115,18 +115,59 @@ def check_and_create_alerts(
     # Метаданные (только если карточка в состоянии available — актуальные данные из API)
     if snapshot_after.get("last_status") == "available" and not is_new_app:
         ov, nv = snapshot_before.get("version"), snapshot_after.get("version")
-        if ov != nv and (ov is not None or nv is not None):
+        version_changed = ov != nv and (ov is not None or nv is not None)
+        if version_changed:
             alert = Alert(
                 app_id=app.id,
                 alert_type="version_change",
                 old_value=json.dumps({"version": ov}, ensure_ascii=False),
-                new_value=json.dumps({"version": nv, "name": snapshot_after.get("name")}, ensure_ascii=False),
+                new_value=json.dumps(
+                    {
+                        "version": nv,
+                        "name": snapshot_after.get("name"),
+                        "store_release_date": snapshot_after.get("store_release_date"),
+                    },
+                    ensure_ascii=False,
+                ),
                 message=f"Версия изменилась: {ov or 'N/A'} → {nv or 'N/A'}",
                 created_at=datetime.utcnow(),
             )
             db.add(alert)
             alerts.append(alert)
             logger.info(f"Алерт version_change для {app_name}: {ov} → {nv}")
+
+        # Дата релиза текущей версии в iTunes обновилась, а строка версии та же —
+        # типично при лаге API или при смене билда без bump в одном из полей.
+        if not version_changed:
+            or_date, nr_date = (
+                snapshot_before.get("store_release_date"),
+                snapshot_after.get("store_release_date"),
+            )
+            if or_date is not None and nr_date is not None and or_date != nr_date:
+                alert = Alert(
+                    app_id=app.id,
+                    alert_type="store_release_change",
+                    old_value=json.dumps(
+                        {"store_release_date": or_date, "version": nv},
+                        ensure_ascii=False,
+                    ),
+                    new_value=json.dumps(
+                        {
+                            "store_release_date": nr_date,
+                            "version": nv,
+                            "name": snapshot_after.get("name"),
+                        },
+                        ensure_ascii=False,
+                    ),
+                    message=(
+                        f"В iTunes обновилась дата релиза текущей версии ({nv or 'N/A'}): "
+                        f"{or_date} → {nr_date}. Если в App Store уже другая версия, у Lookup API часто бывает задержка."
+                    ),
+                    created_at=datetime.utcnow(),
+                )
+                db.add(alert)
+                alerts.append(alert)
+                logger.info("Алерт store_release_change для %s", app_name)
 
         on, nn = snapshot_before.get("name"), snapshot_after.get("name")
         if on != nn and (on is not None or nn is not None):
@@ -200,6 +241,7 @@ def get_alert_emoji(alert_type: str) -> str:
     emoji_map = {
         "status_change": "🔴",
         "version_change": "🔵",
+        "store_release_change": "📅",
         "name_change": "🟣",
         "description_change": "📄",
         "icon_change": "🖼",
@@ -217,6 +259,7 @@ def get_alert_color(alert_type: str) -> str:
     color_map = {
         "status_change": "#ff4757",
         "version_change": "#00d9ff",
+        "store_release_change": "#1dd1a1",
         "name_change": "#a55eea",
         "description_change": "#5f27cd",
         "icon_change": "#00b894",
